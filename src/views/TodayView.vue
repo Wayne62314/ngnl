@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Check, Flame, HardDriveDownload, Lightbulb, Newspaper, PhoneCall, Plus, Sparkles, Sunrise } from 'lucide-vue-next'
+import { Cake, Check, Flame, HardDriveDownload, Lightbulb, Newspaper, PhoneCall, Plus, Sparkles, Sunrise } from 'lucide-vue-next'
 import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
 import { addDays, fromKey, greeting, today, weekdayLabel } from '@/lib/dates'
 import { contactOverdue, isScheduled, streak, taskBucket } from '@/lib/game'
+import { daysToBirthday } from '@/lib/people'
 import { titleOf } from '@/lib/itemView'
 import { attrOf, MOODS, type Task } from '@/lib/types'
 import Avatar from '@/components/Avatar.vue'
@@ -63,8 +64,15 @@ async function captureNote(kind: 'idea' | 'intel') {
 }
 
 // ---- people to reach out to ----
+const birthdays = computed(() =>
+  data.people
+    .map((p) => ({ p, days: daysToBirthday(p, t) }))
+    .filter((x) => x.days !== null && x.days <= 3)
+    .sort((a, b) => a.days! - b.days!),
+)
 const reachOut = computed(() =>
   data.people
+    .filter((p) => !birthdays.value.some((b) => b.p.id === p.id))
     .map((p) => ({ p, over: contactOverdue(p, t) }))
     .filter((x) => x.over !== null)
     .sort((a, b) => b.p.closeness - a.p.closeness || b.over! - a.over!)
@@ -222,9 +230,17 @@ const needBackup = computed(() => {
           </div>
         </section>
 
-        <section v-if="reachOut.length" class="card card-pad">
-          <h2 class="section-title">好久没联系</h2>
+        <section v-if="reachOut.length || birthdays.length" class="card card-pad">
+          <h2 class="section-title">{{ birthdays.length ? '记得联系' : '好久没联系' }}</h2>
           <div class="people">
+            <div v-for="{ p, days } in birthdays" :key="p.id" class="person" @click="ui.open(p.id)">
+              <Avatar :name="p.title" :size="30" />
+              <div class="grow">
+                <div class="ellipsis">{{ titleOf(p) }}</div>
+                <div class="small bday"><Cake :size="12" />{{ days === 0 ? '今天生日！' : `${days} 天后生日` }}</div>
+              </div>
+              <button class="btn sm ghost" title="今天联系过" @click.stop="data.contact(p.id)"><PhoneCall />{{ p.contacts?.includes(t) ? '已联系' : '联系过' }}</button>
+            </div>
             <div v-for="{ p } in reachOut" :key="p.id" class="person" @click="ui.open(p.id)">
               <Avatar :name="p.title" :size="30" />
               <div class="grow">
@@ -489,6 +505,13 @@ const needBackup = computed(() => {
   margin: 0 -6px;
   border-radius: 10px;
   cursor: pointer;
+}
+.bday {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--gold);
+  font-weight: 600;
 }
 .person:hover {
   background: var(--hover);

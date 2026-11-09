@@ -215,11 +215,34 @@ export const useData = defineStore('data', () => {
     await sync(api.mood(date, mood, note))
   }
 
+  /** Toggles "contacted on this day" (used by the quick buttons). Un-marking also drops that day's note. */
   async function contact(personId: string, date = today()) {
     const p = byId.value.get(personId) as Person | undefined
     if (!p) return
-    const has = p.contacts?.includes(date)
-    await update<Person>(personId, { contacts: has ? p.contacts!.filter((d) => d !== date) : [...(p.contacts ?? []), date] })
+    if (p.contacts?.includes(date)) await removeContact(personId, date)
+    else await update<Person>(personId, { contacts: [...(p.contacts ?? []), date] })
+  }
+
+  /** Records a contact on `date` with an optional note (replaces that day's note). */
+  async function logContact(personId: string, date: string, note: string) {
+    const p = byId.value.get(personId) as Person | undefined
+    if (!p) return
+    const contacts = p.contacts?.includes(date) ? [...p.contacts] : [...(p.contacts ?? []), date]
+    const notes = { ...(p.contactNotes ?? {}) }
+    if (note.trim()) notes[date] = note.trim()
+    else delete notes[date]
+    await update<Person>(personId, { contacts, contactNotes: Object.keys(notes).length ? notes : null })
+  }
+
+  async function removeContact(personId: string, date: string) {
+    const p = byId.value.get(personId) as Person | undefined
+    if (!p) return
+    const notes = { ...(p.contactNotes ?? {}) }
+    delete notes[date]
+    await update<Person>(personId, {
+      contacts: (p.contacts ?? []).filter((d) => d !== date),
+      contactNotes: Object.keys(notes).length ? notes : null,
+    })
   }
 
   async function saveProfile(p: Profile) {
@@ -240,7 +263,7 @@ export const useData = defineStore('data', () => {
     items, links, checkins, moods, profile, loaded, loadError, meta, persisted,
     byId, tasks, habits, goals, people, events, notes, linked, doneDates,
     xp, totals, totalXp, level, moodOf,
-    init, load, protect, exportBackup, snoozeBackup, create, update, remove, link, unlink, toggleCheckin, setMood, contact, saveProfile, importSnapshot,
+    init, load, protect, exportBackup, snoozeBackup, create, update, remove, link, unlink, toggleCheckin, setMood, contact, logContact, removeContact, saveProfile, importSnapshot,
   }
 })
 

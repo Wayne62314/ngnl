@@ -53,6 +53,12 @@ export interface Person extends Base {
   traits?: string
   /** Dates (YYYY-MM-DD) the user marked as "联系过". */
   contacts?: string[]
+  /** Optional note per contact date, e.g. "一起吃饭，他想换工作". */
+  contactNotes?: Record<string, string>
+  /** "MM-DD" or "YYYY-MM-DD". */
+  birthday?: string
+  /** How and when you met. */
+  met?: string
 }
 
 export type EventKind = 'event' | 'milestone' | 'decision'

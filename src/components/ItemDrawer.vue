@@ -6,6 +6,7 @@ import { useUi } from '@/stores/ui'
 import { friendly, today, addDays, weekdayLabel } from '@/lib/dates'
 import { bestStreak, contactOverdue, CONTACT_INTERVAL, goalProgress, isLocked, lastContact, streak, TASK_XP } from '@/lib/game'
 import { itemIcon, titleOf } from '@/lib/itemView'
+import { parseBirthday } from '@/lib/people'
 import { typeLabel, type Goal, type Habit, type Item, type LifeEvent, type Note, type Person, type Task } from '@/lib/types'
 import Seg from './Seg.vue'
 import AttrPick from './AttrPick.vue'
@@ -163,6 +164,34 @@ async function addGoalTask() {
 // ---- person ----
 const person = computed(() => (item.value?.type === 'person' ? (item.value as Person) : undefined))
 const RELATIONS = ['家人', '伴侣', '挚友', '朋友', '同学', '同事', '导师', '前辈', '后辈', '网友']
+/** Birthday being edited. Month and day are required, the year is optional; a half-filled date stays local until complete. */
+const bdParts = ref<{ y?: number; m: number; d: number }>({ m: 0, d: 0 })
+watch(
+  () => [person.value?.id, person.value?.birthday],
+  () => {
+    const b = parseBirthday(person.value?.birthday)
+    if (b) bdParts.value = { ...b }
+    else if (bdParts.value.m && bdParts.value.d) bdParts.value = { m: 0, d: 0 }
+  },
+  { immediate: true },
+)
+watch(
+  () => person.value?.id,
+  () => (bdParts.value = { ...(parseBirthday(person.value?.birthday) ?? { m: 0, d: 0 }) }),
+)
+function setBirthday(part: 'y' | 'm' | 'd', raw: string) {
+  const cur = { ...bdParts.value }
+  const n = Number(raw) || 0
+  if (part === 'y') cur.y = n >= 1900 && n <= 2100 ? n : undefined
+  else cur[part] = n
+  bdParts.value = cur
+  if (!cur.m || !cur.d) {
+    if (person.value?.birthday) set({ birthday: null })
+    return
+  }
+  const md = `${String(cur.m).padStart(2, '0')}-${String(cur.d).padStart(2, '0')}`
+  set({ birthday: cur.y ? `${cur.y}-${md}` : md })
+}
 
 // ---- event ----
 const event = computed(() => (item.value?.type === 'event' ? (item.value as LifeEvent) : undefined))
@@ -372,6 +401,34 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <label>特征 / 印象</label>
             <input class="input" :value="val('traits')" placeholder="例如：靠谱、爱爬山、说话直" @input="(e) => text('traits', (e.target as HTMLInputElement).value)" />
           </div>
+          <div class="grid2">
+            <div class="field">
+              <label>生日</label>
+              <div class="bday">
+                <select class="input" :value="bdParts.m || ''" aria-label="月" @change="(e) => setBirthday('m', (e.target as HTMLSelectElement).value)">
+                  <option value="">月</option>
+                  <option v-for="m in 12" :key="m" :value="m">{{ m }}月</option>
+                </select>
+                <select class="input" :value="bdParts.d || ''" aria-label="日" @change="(e) => setBirthday('d', (e.target as HTMLSelectElement).value)">
+                  <option value="">日</option>
+                  <option v-for="d in 31" :key="d" :value="d">{{ d }}日</option>
+                </select>
+                <input
+                  class="input year"
+                  inputmode="numeric"
+                  maxlength="4"
+                  placeholder="年(可选)"
+                  :value="bdParts.y ?? ''"
+                  :disabled="!bdParts.m || !bdParts.d"
+                  @change="(e) => setBirthday('y', (e.target as HTMLInputElement).value)"
+                />
+              </div>
+            </div>
+            <div class="field">
+              <label>怎么认识的</label>
+              <input class="input" :value="val('met')" placeholder="例如：2019 年大学社团" @input="(e) => text('met', (e.target as HTMLInputElement).value)" />
+            </div>
+          </div>
           <div class="contact card-in">
             <div class="grow">
               <div>上次联系：<b>{{ lastContact(person) ? friendly(lastContact(person)!) : '还没记录' }}</b></div>
@@ -385,6 +442,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               {{ person.contacts?.includes(today()) ? '今天已联系 ✓' : '今天联系过' }}
             </button>
           </div>
+          <div v-if="person.contacts?.length" class="faint small">共联系 {{ new Set(person.contacts).size }} 次。往来记录和备注在「人物」页查看。</div>
         </template>
 
         <!-- EVENT -->
@@ -690,6 +748,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .notes {
   min-height: 120px;
+}
+.bday {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 6px;
+}
+.bday .input {
+  min-width: 0;
+  padding-left: 8px;
+  padding-right: 4px;
 }
 .links {
   display: grid;
