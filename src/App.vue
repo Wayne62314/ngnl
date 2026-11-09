@@ -8,7 +8,7 @@ import {
   CloudOff,
   Download,
   Ellipsis,
-  History,
+  MapPinned,
   Lightbulb,
   Network,
   RefreshCw,
@@ -46,7 +46,7 @@ const nav = [
   { to: '/habits', label: '习惯', icon: Repeat, phone: true },
   { to: '/goals', label: '愿景树', icon: Network },
   { to: '/people', label: '人物', icon: Users, phone: true },
-  { to: '/timeline', label: '经历', icon: History },
+  { to: '/trajectory', label: '轨迹', icon: MapPinned },
   { to: '/notes', label: '灵感', icon: Lightbulb },
 ]
 const more = computed(() => [...nav.filter((n) => !n.phone), { to: '/settings', label: '设置与备份', icon: Settings }])

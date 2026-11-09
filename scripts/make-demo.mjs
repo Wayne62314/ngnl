@@ -279,6 +279,34 @@ intel.forEach(([t, tags]) => {
   if (tags.includes('godot')) link(n.id, gGodot.id)
 })
 
+// ---------------------------------------------------------------- trajectory (situation tracks)
+const PL = (name, lat, lng) => ({ name, lat, lng })
+const GZ = PL('赣州', 25.92, 114.95), WH = PL('武汉', 30.582, 114.268), SZ = PL('深圳', 22.554, 114.12), HZ = PL('杭州', 30.252, 120.168)
+const XM = PL('厦门', 24.48, 118.09), TK = PL('东京', 35.687, 139.749)
+const seg = (lane, title, start, end, place, x = {}) =>
+  item('segment', start < START ? START : start, { lane, title, start, ...(end ? { end } : {}), ...(place ? { place } : {}), ...x })
+seg('home', '赣州老家', '1997-03-01', '2015-08-31', GZ)
+seg('home', '武汉 · 大学宿舍', '2015-09-01', '2019-06-30', WH)
+seg('home', '深圳 · 南山合租', '2019-07-01', '2022-02-28', SZ)
+seg('home', '深圳 · 南山整租一室一厅', '2022-03-01', undefined, SZ)
+seg('home', '搬去杭州？', add(TODAY, 220), undefined, HZ, { goalId: gDev.id })
+seg('work', '武汉大学 · 计算机', '2015-09-01', '2019-06-30', WH)
+seg('work', 'A 公司 · 前端', '2019-07-15', '2022-02-28', SZ)
+seg('work', 'B 公司 · 后端 ＋ 业余做游戏', '2022-03-01', undefined, SZ)
+seg('work', '全职独立开发', add(TODAY, 220), undefined, HZ, { goalId: gDev.id })
+seg('love', '单身', '2015-09-01', '2021-04-09')
+seg('love', '和林夏在一起', '2021-04-10', undefined, SZ)
+seg('health', '失眠期', add(START, 150), add(START, 200), undefined, { feeling: 'bad' })
+seg('health', '坚持跑步，体脂下降', add(START, 200), undefined, undefined, { feeling: 'good' })
+seg('money', '还助学贷款', '2019-07-01', '2022-06-30')
+seg('money', '攒钱 · 目标一年生活费', '2022-07-01', undefined, undefined, { goalId: gMoney.id })
+for (const e of items.filter((i) => i.type === 'event')) {
+  if (e.title.includes('厦门')) e.place = XM
+  else if (e.title === '大学毕业') e.place = WH
+  else if (e.date >= '2019-07-01') e.place = SZ
+}
+item('event', add(START, 60), { title: '东京出差一周', date: add(START, 60), kind: 'event', feeling: 'good', place: TK })
+
 // ---------------------------------------------------------------- save
 const snapshot = {
   version: 1,
@@ -291,5 +319,6 @@ const snapshot = {
 writeFileSync(OUT, JSON.stringify(snapshot))
 const count = (t) => items.filter((i) => i.type === t).length
 console.log(`${OUT}: ${START} → ${TODAY}`)
+console.log(`segments ${count('segment')}, `)
 console.log(`tasks ${count('task')}, habits ${count('habit')}, goals ${count('goal')}, people ${count('person')}, events ${count('event')}, notes ${count('note')}`)
 console.log(`links ${snapshot.links.length}, checkins ${checkins.length}, moods ${moods.length}, contacts ${people.reduce((s, p) => s + (p.contacts?.length ?? 0), 0)}`)

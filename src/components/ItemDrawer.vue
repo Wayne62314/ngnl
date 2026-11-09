@@ -7,13 +7,15 @@ import { friendly, today, addDays, weekdayLabel } from '@/lib/dates'
 import { bestStreak, contactOverdue, CONTACT_INTERVAL, goalProgress, isLocked, lastContact, streak, TASK_XP } from '@/lib/game'
 import { itemIcon, titleOf } from '@/lib/itemView'
 import { parseBirthday } from '@/lib/people'
-import { typeLabel, type Goal, type Habit, type Item, type LifeEvent, type Note, type Person, type Task } from '@/lib/types'
+import { typeLabel, type Goal, type Habit, type Item, type LifeEvent, type Note, type Person, type Segment, type Task } from '@/lib/types'
 import Seg from './Seg.vue'
 import AttrPick from './AttrPick.vue'
 import ItemPicker from './ItemPicker.vue'
 import RelatedGroups from './RelatedGroups.vue'
 import FieldsSection from './FieldsSection.vue'
 import FieldDefEditor from './FieldDefEditor.vue'
+import PlacePicker from './PlacePicker.vue'
+import { lanesFor } from '@/lib/trajectory'
 
 const data = useData()
 const ui = useUi()
@@ -227,6 +229,15 @@ function setBirthday(part: 'y' | 'm' | 'd', raw: string) {
 
 // ---- event ----
 const event = computed(() => (item.value?.type === 'event' ? (item.value as LifeEvent) : undefined))
+
+// ---- segment (trajectory) ----
+const segment = computed(() => (item.value?.type === 'segment' ? (item.value as Segment) : undefined))
+const segLanes = computed(() => lanesFor(data.profile.lanes, data.segments))
+/** "2026-03" → "2026-03-31": an end month means the whole month. */
+function endOfMonth(ym: string) {
+  const [y, m] = ym.split('-').map(Number)
+  return `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`
+}
 
 // ---- note ----
 const note = computed(() => (item.value?.type === 'note' ? (item.value as Note) : undefined))
@@ -477,6 +488,56 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <div v-if="person.contacts?.length" class="faint small">共联系 {{ new Set(person.contacts).size }} 次。往来记录和备注在「人物」页查看。</div>
         </template>
 
+        <!-- SEGMENT (trajectory) -->
+        <template v-if="segment">
+          <div class="field">
+            <label>轨道</label>
+            <Seg :model-value="segment.lane" :options="segLanes.map((l) => ({ value: l.key, label: l.label, color: l.color }))" @update:model-value="(v) => set({ lane: v })" />
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>开始</label>
+              <input type="month" class="input" :value="segment.start.slice(0, 7)" @change="(e) => set({ start: ((e.target as HTMLInputElement).value || today().slice(0, 7)) + '-01' })" />
+            </div>
+            <div class="field">
+              <label>结束</label>
+              <div class="row">
+                <input
+                  type="month"
+                  class="input"
+                  :value="segment.end?.slice(0, 7) ?? ''"
+                  :min="segment.start.slice(0, 7)"
+                  @change="(e) => set({ end: (e.target as HTMLInputElement).value ? endOfMonth((e.target as HTMLInputElement).value) : null })"
+                />
+                <button v-if="segment.end" class="btn ghost sm" title="改成「至今」" @click="set({ end: null })">至今</button>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>地点</label>
+            <PlacePicker :model-value="segment.place" @update:model-value="(p) => set({ place: p ?? null })" />
+          </div>
+          <div class="field">
+            <label>这段时间的感受</label>
+            <Seg
+              :model-value="segment.feeling ?? 'neutral'"
+              :options="[
+                { value: 'good', label: '美好', color: 'var(--ok)' },
+                { value: 'neutral', label: '平常' },
+                { value: 'bad', label: '艰难', color: 'var(--danger)' },
+              ]"
+              @update:model-value="(v) => set({ feeling: v })"
+            />
+          </div>
+          <div v-if="segment.start > today()" class="field">
+            <label>这是一个打算，对应愿景树里的目标</label>
+            <select class="input" :value="segment.goalId ?? ''" @change="(e) => set({ goalId: (e.target as HTMLSelectElement).value || null })">
+              <option value="">不关联目标</option>
+              <option v-for="g in data.goals" :key="g.id" :value="g.id">{{ titleOf(g) }}</option>
+            </select>
+          </div>
+        </template>
+
         <!-- EVENT -->
         <template v-if="event">
           <div class="grid2">
@@ -508,6 +569,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               ]"
               @update:model-value="(v) => set({ kind: v })"
             />
+          </div>
+          <div class="field">
+            <label>在哪里</label>
+            <PlacePicker :model-value="event.place" @update:model-value="(p) => set({ place: p ?? null })" />
           </div>
           <template v-if="event.kind === 'decision'">
             <div class="field">
