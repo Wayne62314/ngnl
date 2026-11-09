@@ -126,11 +126,11 @@ function dropNode(id: string) {
 }
 function onNodesChange(changes: NodeChange[]) {
   for (const c of changes) if (c.type === 'remove') dropNode(c.id)
-  flow.applyNodeChanges(changes)
+  inst.value?.applyNodeChanges(changes)
 }
 function onEdgesChange(changes: EdgeChange[]) {
   for (const c of changes) if (c.type === 'remove') draft.edges = draft.edges.filter((e) => e.id !== c.id)
-  flow.applyEdgeChanges(changes)
+  inst.value?.applyEdgeChanges(changes)
 }
 function onDragStop({ nodes }: { nodes: { id: string; position: { x: number; y: number } }[] }) {
   for (const fn of nodes) {
