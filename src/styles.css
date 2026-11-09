@@ -397,3 +397,20 @@ h3 {
     font-size: 22px;
   }
 }
+
+/* ---- reward feedback: the tick springs in when checked (a transition, so it never replays on page load) ---- */
+.check svg {
+  transform: scale(0.3) rotate(-20deg);
+  transition: transform 0.35s cubic-bezier(0.2, 1.8, 0.4, 1);
+}
+.check.on svg {
+  transform: none;
+}
+.check:not(.on):active {
+  transform: scale(0.88);
+}
+@media (prefers-reduced-motion: reduce) {
+  .check svg {
+    transition: none;
+  }
+}

@@ -3,7 +3,8 @@ import { computed, ref } from 'vue'
 import { api } from '@/lib/api'
 import { isPersisted, onExternalChange, patchMeta, readMeta, requestPersistence, type Meta } from '@/lib/storage'
 import { today } from '@/lib/dates'
-import { attrTotals, characterLevel, xpEntries } from '@/lib/game'
+import { attrLevel, attrTotals, characterLevel, rankOf, xpEntries } from '@/lib/game'
+import { attrOf } from '@/lib/types'
 import type { Attr, Checkin, Goal, Habit, Item, ItemOf, ItemType, LifeEvent, Mood, Note, Person, Profile, Snapshot, Task } from '@/lib/types'
 import { useUi } from './ui'
 
@@ -135,11 +136,20 @@ export const useData = defineStore('data', () => {
     const before = { ...totals.value }
     fn()
     const ui = useUi()
+    let i = 0
     for (const [k, v] of Object.entries(totals.value) as [Attr, number][]) {
       const d = v - before[k]
-      if (d > 0) ui.xp(k, d)
+      if (d <= 0) continue
+      ui.xp(k, d, i++)
+      const was = attrLevel(before[k]).level
+      const now = attrLevel(v).level
+      if (now > was) ui.toast(`${attrOf(k).label} 升到 Lv.${now}`, 'level', attrOf(k).color, k)
     }
-    if (level.value.level > beforeLevel) ui.toast(`升级！你现在是 Lv.${level.value.level}`, 'level')
+    const lv = level.value.level
+    if (lv > beforeLevel) {
+      const rank = rankOf(lv).title
+      ui.levelUp = { level: lv, rank: rank !== rankOf(beforeLevel).title ? rank : undefined }
+    }
   }
 
   async function create<T extends ItemType>(type: T, data: Partial<ItemOf<T>> = {}): Promise<ItemOf<T> | undefined> {

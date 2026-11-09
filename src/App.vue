@@ -9,6 +9,8 @@ import XpBar from '@/components/XpBar.vue'
 import ItemDrawer from '@/components/ItemDrawer.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import Toasts from '@/components/Toasts.vue'
+import Floaters from '@/components/Floaters.vue'
+import LevelUp from '@/components/LevelUp.vue'
 
 const data = useData()
 const ui = useUi()
@@ -112,6 +114,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <ItemDrawer />
     <CommandPalette />
     <Toasts />
+    <Floaters />
+    <LevelUp />
   </div>
 </template>
 

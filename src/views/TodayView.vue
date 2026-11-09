@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Cake, Check, Flame, HardDriveDownload, Lightbulb, Newspaper, PhoneCall, Plus, Sparkles, Sunrise } from 'lucide-vue-next'
+import { Cake, Check, Flame, HardDriveDownload, Lightbulb, Newspaper, PhoneCall, Plus, Repeat, Sparkles, Sunrise, Swords } from 'lucide-vue-next'
 import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
 import { addDays, fromKey, greeting, today, weekdayLabel } from '@/lib/dates'
-import { contactOverdue, isScheduled, streak, taskBucket } from '@/lib/game'
+import { activeStreak, contactOverdue, isScheduled, rankOf, streak, taskBucket } from '@/lib/game'
 import { daysToBirthday } from '@/lib/people'
 import { titleOf } from '@/lib/itemView'
 import { attrOf, MOODS, type Task } from '@/lib/types'
@@ -41,6 +41,9 @@ const habitsDone = computed(() => habits.value.filter((h) => data.doneDates(h.id
 
 // ---- xp today ----
 const xpToday = computed(() => data.xp.filter((e) => e.date === t).reduce((s, e) => s + e.xp, 0))
+const active = computed(() => activeStreak(data.xp, t))
+const taskTotal = computed(() => doneToday.value.length + todays.value.length + overdue.value.length)
+const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0)
 
 // ---- mood ----
 const mood = computed(() => data.moodOf(t))
@@ -101,10 +104,46 @@ const needBackup = computed(() => {
 
 <template>
   <div class="page">
-    <header class="page-head">
-      <div>
-        <h1 class="page-title">{{ greeting() }}，{{ data.profile.name || '旅人' }}</h1>
-        <div class="page-sub">{{ dateLine }}</div>
+    <header class="banner">
+      <RouterLink to="/character" class="who">
+        <div class="av">
+          <Avatar :name="data.profile.name" :size="68" />
+          <span class="lvbadge num">{{ data.level.level }}</span>
+        </div>
+        <div class="grow">
+          <div class="hello">{{ greeting() }} · {{ dateLine }}</div>
+          <h1 class="name">{{ data.profile.name || '旅人' }}</h1>
+          <div class="rankline">
+            <span class="rank">{{ data.profile.title || rankOf(data.level.level).title }}</span>
+            <span class="lvtext num">Lv.{{ data.level.level }}</span>
+          </div>
+          <div class="xp"><XpBar :into="data.level.into" :need="data.level.need" :height="8" /></div>
+          <div class="xpnums num">{{ data.level.into }} / {{ data.level.need }} XP · 距 Lv.{{ data.level.level + 1 }} 还差 {{ data.level.need - data.level.into }}</div>
+        </div>
+      </RouterLink>
+      <div class="quests">
+        <div class="quest">
+          <Swords :size="18" />
+          <b class="num">{{ doneToday.length }}<small>/{{ taskTotal }}</small></b>
+          <span>今日任务</span>
+          <i :style="{ width: `${pct(doneToday.length, taskTotal)}%` }" />
+        </div>
+        <div class="quest">
+          <Repeat :size="18" />
+          <b class="num">{{ habitsDone }}<small>/{{ habits.length }}</small></b>
+          <span>今日习惯</span>
+          <i :style="{ width: `${pct(habitsDone, habits.length)}%` }" />
+        </div>
+        <div class="quest gold">
+          <Sparkles :size="18" />
+          <b class="num">+{{ xpToday }}</b>
+          <span>今日经验</span>
+        </div>
+        <div class="quest fire" :class="{ lit: active > 0 }">
+          <Flame :size="18" />
+          <b class="num">{{ active }}<small>天</small></b>
+          <span>连续活跃</span>
+        </div>
       </div>
     </header>
 
@@ -188,21 +227,6 @@ const needBackup = computed(() => {
       </div>
 
       <div class="col">
-        <RouterLink to="/character" class="card hero">
-          <Avatar :name="data.profile.name" :size="54" />
-          <div class="grow">
-            <div class="row" style="justify-content: space-between">
-              <b>{{ data.profile.title || '见习冒险者' }}</b>
-              <span class="lv num">Lv.{{ data.level.level }}</span>
-            </div>
-            <XpBar :into="data.level.into" :need="data.level.need" :height="7" />
-            <div class="row xp-line num">
-              <span>{{ data.level.into }} / {{ data.level.need }} XP</span>
-              <span v-if="xpToday" class="gain"><Sparkles :size="12" />今天 +{{ xpToday }}</span>
-            </div>
-          </div>
-        </RouterLink>
-
         <section class="card card-pad">
           <h2 class="section-title">今天心情如何</h2>
           <div class="moods">
@@ -411,37 +435,176 @@ const needBackup = computed(() => {
   font-weight: 700;
   color: var(--attr-craft);
 }
-.hero {
+.banner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  padding: 22px 24px;
+  margin-bottom: 20px;
+  border-radius: 20px;
+  overflow: hidden;
+  color: #f4f1ea;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(226, 176, 74, 0.28), transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(120, 86, 220, 0.25), transparent 50%),
+    linear-gradient(135deg, #1d1b27, #2a2537);
+  box-shadow: var(--shadow-lg);
+}
+/* faint hexagon pattern */
+.banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='64' viewBox='0 0 56 64'%3E%3Cpath d='M28 2l24 14v32L28 62 4 48V16z' fill='none' stroke='%23e2b04a' stroke-width='1.5'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+.who {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 20px;
+  gap: 18px;
+  min-width: 0;
+  color: inherit;
   text-decoration: none;
-  background: linear-gradient(135deg, var(--surface), var(--gold-soft));
 }
-.hero b {
-  font-size: 15px;
+.av {
+  position: relative;
+  flex: none;
+  filter: drop-shadow(0 0 18px rgba(226, 176, 74, 0.35));
 }
-.hero .row {
-  margin-bottom: 8px;
-}
-.lv {
-  font-weight: 800;
-  color: var(--gold);
-  font-size: 15px;
-}
-.xp-line {
-  justify-content: space-between;
-  margin: 6px 0 0 !important;
+.lvbadge {
+  position: absolute;
+  right: -6px;
+  bottom: -2px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
   font-size: 12px;
-  color: var(--text-3);
+  font-weight: 800;
+  color: #1c1a24;
+  background: linear-gradient(135deg, #f0c869, #c08a22);
+  border: 2px solid #1d1b27;
 }
-.gain {
-  display: inline-flex;
+.hello {
+  font-size: 13px;
+  color: rgba(244, 241, 234, 0.6);
+}
+.name {
+  margin: 2px 0 4px;
+  font-size: 26px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rankline {
+  display: flex;
   align-items: center;
-  gap: 3px;
-  color: var(--gold);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.rank {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f0c869;
+  background: rgba(226, 176, 74, 0.14);
+  border: 1px solid rgba(226, 176, 74, 0.35);
+}
+.lvtext {
+  font-weight: 800;
+  color: #f0c869;
+}
+/* The XP bar's track uses --sunken; give it a light track on the dark banner. */
+.xp {
+  max-width: 420px;
+  --sunken: rgba(255, 255, 255, 0.12);
+}
+.xpnums {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(244, 241, 234, 0.55);
+}
+.quests {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, 136px);
+  gap: 10px;
+}
+.quest {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+  padding: 11px 14px 13px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(244, 241, 234, 0.6);
+}
+.quest svg {
+  grid-row: span 2;
+}
+.quest b {
+  font-size: 20px;
+  line-height: 1.1;
+  color: #f4f1ea;
+}
+.quest small {
+  font-size: 13px;
   font-weight: 600;
+  color: rgba(244, 241, 234, 0.45);
+  margin-left: 1px;
+}
+.quest span {
+  font-size: 12px;
+}
+.quest i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #f0c869, #c08a22);
+  transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.quest.gold svg,
+.quest.gold b {
+  color: #f0c869;
+}
+.quest.fire.lit svg {
+  color: #ff8a3d;
+  filter: drop-shadow(0 0 6px rgba(255, 138, 61, 0.6));
+}
+@media (max-width: 980px) {
+  .banner {
+    grid-template-columns: 1fr;
+  }
+  .quests {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .banner {
+    padding: 18px 16px;
+    border-radius: 16px;
+    gap: 16px;
+  }
+  .name {
+    font-size: 22px;
+  }
+  .quests {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .moods {
   display: flex;

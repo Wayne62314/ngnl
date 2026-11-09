@@ -2,7 +2,8 @@
 import { computed, reactive, watch } from 'vue'
 import { useData } from '@/stores/data'
 import { addDays, fromKey, today } from '@/lib/dates'
-import { achievements, attrLevel, bestStreak } from '@/lib/game'
+import { achievements, attrLevel, bestStreak, rankOf } from '@/lib/game'
+import { ATTR_ICON } from '@/lib/attrIcons'
 import { ATTRS, MOODS, type Profile } from '@/lib/types'
 import Avatar from '@/components/Avatar.vue'
 import XpBar from '@/components/XpBar.vue'
@@ -34,6 +35,7 @@ const attrs = computed(() =>
 )
 const radar = computed(() => attrs.value.map((a) => ({ label: a.label, value: a.info.level, color: a.color })))
 const radarMax = computed(() => Math.max(5, ...attrs.value.map((a) => a.info.level)))
+const rank = computed(() => rankOf(data.level.level))
 const top = computed(() => [...attrs.value].sort((a, b) => b.info.total - a.info.total)[0])
 
 // ---- stats ----
@@ -71,7 +73,11 @@ const unlocked = computed(() => ach.value.filter((a) => a.unlocked).length)
         <Avatar :name="form.name" :size="96" />
         <div class="grow">
           <input v-model="form.name" class="name" placeholder="你的名字" @blur="save" />
-          <input v-model="form.title" class="title" placeholder="称号，例如：深夜写代码的人" @blur="save" />
+          <div class="rankrow">
+            <span class="rank">{{ rank.title }}</span>
+            <span v-if="rank.next" class="faint small">Lv.{{ rank.next.from }} 解锁「{{ rank.next.title }}」</span>
+          </div>
+          <input v-model="form.title" class="title" placeholder="自定义称号（可选），例如：深夜写代码的人" @blur="save" />
           <div class="lvl">
             <span class="lv num">Lv.{{ data.level.level }}</span>
             <XpBar :into="data.level.into" :need="data.level.need" :height="8" />
@@ -90,7 +96,7 @@ const unlocked = computed(() => ach.value.filter((a) => a.unlocked).length)
         <div class="radar-wrap"><Radar :values="radar" :max="radarMax" /></div>
         <div class="attrs">
           <div v-for="a in attrs" :key="a.key" class="attr" :title="a.hint">
-            <span class="an" :style="{ color: a.color }">{{ a.label }}</span>
+            <span class="an" :style="{ color: a.color }"><component :is="ATTR_ICON[a.key]" :size="14" />{{ a.label }}</span>
             <XpBar :into="a.info.into" :need="a.info.need" :color="a.color" :height="5" />
             <span class="num faint">Lv.{{ a.info.level }}</span>
           </div>
@@ -147,6 +153,27 @@ const unlocked = computed(() => ach.value.filter((a) => a.unlocked).length)
 </template>
 
 <style scoped>
+.rankrow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 2px 0 2px;
+}
+.rank {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  background: var(--gold-soft);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+}
+.an {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
 .page {
   display: grid;
   gap: 24px;
@@ -218,7 +245,7 @@ const unlocked = computed(() => ach.value.filter((a) => a.unlocked).length)
 }
 .attr {
   display: grid;
-  grid-template-columns: 40px 1fr 44px;
+  grid-template-columns: 62px 1fr 44px;
   align-items: center;
   gap: 10px;
   font-size: 13px;

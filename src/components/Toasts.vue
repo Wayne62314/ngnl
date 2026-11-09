@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useUi } from '@/stores/ui'
+import { ATTR_ICON } from '@/lib/attrIcons'
 const ui = useUi()
 </script>
 
@@ -7,7 +8,8 @@ const ui = useUi()
   <div class="toasts" aria-live="polite">
     <TransitionGroup name="toast">
       <div v-for="t in ui.toasts" :key="t.id" class="toast" :class="t.kind" :style="t.color ? { '--c': t.color } : undefined">
-        <span v-if="t.kind === 'level'">✨</span>
+        <component :is="ATTR_ICON[t.attr]" v-if="t.attr" :size="14" />
+        <span v-else-if="t.kind === 'level'">✨</span>
         {{ t.text }}
       </div>
     </TransitionGroup>
@@ -26,6 +28,9 @@ const ui = useUi()
   pointer-events: none;
 }
 .toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 14px;
   border-radius: 999px;
   background: var(--ink);
@@ -40,7 +45,7 @@ const ui = useUi()
   border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
 }
 .toast.level {
-  background: linear-gradient(90deg, var(--gold-2), var(--gold));
+  background: linear-gradient(90deg, var(--c, var(--gold-2)), var(--c, var(--gold)));
   color: #1c1a24;
   font-size: 14px;
   padding: 10px 18px;

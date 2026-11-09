@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { addDays, weekday } from './dates'
-import { attrTotals, bestStreak, characterLevel, contactOverdue, goalProgress, isLocked, levelFor, streak, taskBucket, xpEntries } from './game'
+import { activeStreak, attrTotals, bestStreak, rankOf, characterLevel, contactOverdue, goalProgress, isLocked, levelFor, streak, taskBucket, xpEntries } from './game'
 import type { Goal, Habit, Item, Person, Task } from './types'
 
 const base = { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', title: 'x' }
@@ -87,5 +87,19 @@ describe('contact reminders', () => {
     expect(contactOverdue(p(5, ['2026-11-01']), '2026-11-09')).toBe(1)
     expect(contactOverdue(p(5, ['2026-11-05']), '2026-11-09')).toBeNull()
     expect(contactOverdue(p(1, ['2020-01-01']), '2026-11-09')).toBeNull()
+  })
+})
+
+describe('ranks and activity', () => {
+  it('maps levels to rank titles', () => {
+    expect(rankOf(1)).toMatchObject({ title: '见习冒险者', next: { from: 5 } })
+    expect(rankOf(12).title).toBe('熟练冒险者')
+    expect(rankOf(99)).toEqual({ title: '传奇', next: undefined })
+  })
+  it('counts consecutive active days, forgiving an empty today', () => {
+    const e = (date: string) => ({ attr: 'mind' as const, xp: 1, date })
+    expect(activeStreak([e('2026-11-09'), e('2026-11-08'), e('2026-11-06')], '2026-11-09')).toBe(2)
+    expect(activeStreak([e('2026-11-08'), e('2026-11-07')], '2026-11-09')).toBe(2)
+    expect(activeStreak([e('2026-11-07')], '2026-11-09')).toBe(0)
   })
 })

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ATTRS, type Attr } from '@/lib/types'
+import { ATTR_ICON } from '@/lib/attrIcons'
 defineProps<{ modelValue: Attr | undefined }>()
 const emit = defineEmits<{ 'update:modelValue': [v: Attr] }>()
 </script>
@@ -17,7 +18,7 @@ const emit = defineEmits<{ 'update:modelValue': [v: Attr] }>()
       :style="{ '--c': a.color }"
       @click="emit('update:modelValue', a.key)"
     >
-      <span class="dot" />{{ a.label }}
+      <component :is="ATTR_ICON[a.key]" :size="14" class="ic" />{{ a.label }}
     </button>
   </div>
 </template>
@@ -44,6 +45,9 @@ button {
 }
 button:hover {
   border-color: var(--c);
+}
+.ic {
+  color: var(--c);
 }
 button.on {
   border-color: var(--c);

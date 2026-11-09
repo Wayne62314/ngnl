@@ -57,6 +57,34 @@ export function levelFor(total: number, base: number, step: number): LevelInfo {
 }
 
 export const characterLevel = (xp: number) => levelFor(xp, 40, 20)
+
+/** Rank titles unlocked by character level. A custom title in the profile overrides them. */
+export const RANKS: { from: number; title: string }[] = [
+  { from: 1, title: '见习冒险者' },
+  { from: 5, title: '初级冒险者' },
+  { from: 10, title: '熟练冒险者' },
+  { from: 15, title: '资深冒险者' },
+  { from: 22, title: '精英冒险者' },
+  { from: 30, title: '人生大师' },
+  { from: 40, title: '传奇' },
+]
+export function rankOf(level: number): { title: string; next?: { from: number; title: string } } {
+  let i = 0
+  while (i + 1 < RANKS.length && RANKS[i + 1].from <= level) i++
+  return { title: RANKS[i].title, next: RANKS[i + 1] }
+}
+
+/** Consecutive days with any XP, ending today (or yesterday, if today has nothing yet). */
+export function activeStreak(entries: XpEntry[], today: string): number {
+  const days = new Set(entries.map((e) => e.date))
+  let d = days.has(today) ? today : addDays(today, -1)
+  let n = 0
+  while (days.has(d)) {
+    n++
+    d = addDays(d, -1)
+  }
+  return n
+}
 export const attrLevel = (xp: number) => levelFor(xp, 20, 10)
 
 export function attrTotals(entries: XpEntry[]): Record<Attr, number> {
