@@ -24,6 +24,16 @@
 - 两周没备份且有改动时，今日页会提醒
 - 支持离线使用；Chrome / Edge 地址栏可以「安装为应用」，手机浏览器可以「添加到主屏幕」
 
+## AI 助手（MCP，电脑版）
+
+可以让 Claude Desktop、Claude Code 等支持 [MCP](https://modelcontextprotocol.io/) 的 AI 助手直接读写你的数据，例如"给我写这周的周报""把逾期任务改到明天""最近该联系谁"。
+
+1. 安装 Node.js 18+，在应用的「设置与备份 → AI 助手」里下载 `ngnl-mcp.mjs`（就是本仓库的 [`public/ngnl-mcp.mjs`](public/ngnl-mcp.mjs)，单文件、零依赖）
+2. 加到 AI 助手里：`claude mcp add ngnl -- node /path/to/ngnl-mcp.mjs`，或在 Claude Desktop 配置里加 `{"mcpServers":{"ngnl":{"command":"node","args":["/path/to/ngnl-mcp.mjs"]}}}`
+3. 在应用里打开「连接 AI 助手」，保持页面开着。Chrome / Edge 第一次会询问是否允许本页面访问这台电脑上的应用，选允许
+
+工作方式：`ngnl-mcp` 只在 `127.0.0.1` 上监听，网页连上它之后，AI 的每次工具调用都转交给网页执行（数据不经过任何服务器，也不会被这个程序保存），并显示在设置页的操作记录里。可以关闭「允许 AI 修改数据」变成只读。手机浏览器无法运行该程序，所以只支持电脑。自己部署在其他网址时，用环境变量 `NGNL_ORIGINS` 加入你的网址。
+
 ## 运行
 
 需要 [Node.js](https://nodejs.org/) 20 或更高版本（只用于构建）。
@@ -45,3 +55,4 @@ npm test           # 单元测试
 - `src/lib/api.ts`：把两者组合起来，供 Pinia store 使用
 - `src/lib/game.ts`：经验、等级、连续打卡、成就等规则，全部由真实记录推导
 - `public/sw.js`：离线缓存（构建时由 `vite.config.ts` 写入文件清单）
+- `public/ngnl-mcp.mjs`：MCP server（stdio）+ 本机 WebSocket 桥；`src/lib/mcpTools.ts` 是工具在网页端的实现，`src/stores/mcp.ts` 管理连接

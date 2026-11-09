@@ -4,6 +4,7 @@ import { RouterLink, RouterView } from 'vue-router'
 import { BookOpenText, CalendarDays, History, Lightbulb, Network, Repeat, Search, Settings, Swords, UserRound, Users } from 'lucide-vue-next'
 import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
+import { useMcp } from '@/stores/mcp'
 import Avatar from '@/components/Avatar.vue'
 import XpBar from '@/components/XpBar.vue'
 import ItemDrawer from '@/components/ItemDrawer.vue'
@@ -33,7 +34,7 @@ function onKey(e: KeyboardEvent) {
   }
 }
 onMounted(() => {
-  data.init()
+  data.init().then(() => useMcp().start())
   window.addEventListener('keydown', onKey)
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
