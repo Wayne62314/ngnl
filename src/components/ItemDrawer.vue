@@ -12,6 +12,8 @@ import Seg from './Seg.vue'
 import AttrPick from './AttrPick.vue'
 import ItemPicker from './ItemPicker.vue'
 import RelatedGroups from './RelatedGroups.vue'
+import FieldsSection from './FieldsSection.vue'
+import FieldDefEditor from './FieldDefEditor.vue'
 
 const data = useData()
 const ui = useUi()
@@ -104,6 +106,10 @@ function deleteDetails(it: Item): string[] {
     const tasks = data.tasks.filter((t) => t.goalId === it.id).length
     if (kids) out.push(`${kids} 个子目标会变成独立的目标（不会删除）`)
     if (tasks) out.push(`${tasks} 个任务会解除与它的挂靠（不会删除）`)
+  }
+  if (it.type === 'field') {
+    const n = data.items.filter((x) => x.fields && it.id in x.fields).length
+    if (n) out.push(`${n} 个条目上的「${titleOf(it)}」值会一起删除`)
   }
   if (links) out.push(`与其他条目的 ${links} 条关联会移除`)
   return out
@@ -566,6 +572,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <label>{{ item.type === 'event' ? '发生了什么' : item.type === 'note' ? '内容' : '备注' }}</label>
           <textarea class="textarea notes" :value="val('notes')" placeholder="写点什么…" @input="(e) => text('notes', (e.target as HTMLTextAreaElement).value)" />
         </div>
+
+        <!-- FIELD DEFINITION -->
+        <FieldDefEditor v-if="item.type === 'field'" :def="item" />
+        <!-- custom field values (every other type) -->
+        <FieldsSection v-else :item="item" />
 
         <section class="links">
           <div class="label row"><Link2 :size="13" />关联 <span class="faint">{{ linked.length || '' }}</span></div>

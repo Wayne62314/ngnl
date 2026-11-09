@@ -16,6 +16,15 @@ interface Base {
   updatedAt: string
   title: string
   notes?: string
+  /** Custom field values, keyed by the id of a `field` item. */
+  fields?: Record<string, FieldValue>
+}
+
+/** A place on the offline map. */
+export interface Place {
+  name: string
+  lat: number
+  lng: number
 }
 
 export type TaskStatus = 'todo' | 'doing' | 'done' | 'dropped'
@@ -65,6 +74,7 @@ export type EventKind = 'event' | 'milestone' | 'decision'
 export interface LifeEvent extends Base {
   type: 'event'
   date: string
+  place?: Place
   kind: EventKind
   feeling?: 'good' | 'neutral' | 'bad'
   options?: string
@@ -82,7 +92,84 @@ export interface Note extends Base {
   tags?: string[]
 }
 
-export type Item = Task | Habit | Goal | Person | LifeEvent | Note
+// ---- custom fields ----
+export type FieldKind = 'number' | 'money' | 'date' | 'duration' | 'percent' | 'text' | 'select' | 'bool' | 'item'
+export type FieldValue = number | string | boolean
+/** A field definition (name, type, unit). Its values live in other items' `fields`. */
+export interface FieldDef extends Base {
+  type: 'field'
+  kind: FieldKind
+  unit?: string
+  /** Choices for kind "select". */
+  options?: string[]
+}
+
+// ---- trajectory ----
+/** A stretch of time on one track of your life (where you lived, a job, a relationship…). */
+export interface Segment extends Base {
+  type: 'segment'
+  /** Track key: home / work / love / health / money, or any custom track name. */
+  lane: string
+  /** YYYY-MM-DD; an end in the future (or a start in the future) marks a plan. */
+  start: string
+  end?: string
+  place?: Place
+  feeling?: 'good' | 'neutral' | 'bad'
+  goalId?: string
+}
+
+// ---- assets ----
+export type AssetCategory = 'item' | 'cred' | 'fame' | 'finance' | 'debt'
+export type AssetStatus = 'owned' | 'wanted' | 'lost' | 'sold'
+export interface Asset extends Base {
+  type: 'asset'
+  category: AssetCategory
+  status: AssetStatus
+  /** Estimated value in yuan (debts: the amount owed). */
+  value?: number
+  acquired?: string
+  goalId?: string
+}
+export type LedgerRepeat = 'none' | 'week' | 'month' | 'year'
+/** Money in or out: a one-off amount, or a recurring one (salary, rent). */
+export interface LedgerEntry extends Base {
+  type: 'ledger'
+  flow: 'income' | 'expense'
+  amount: number
+  repeat: LedgerRepeat
+  /** First (or only) date. */
+  date: string
+  /** Last date of a recurring entry, if it has ended. */
+  until?: string
+  category?: string
+}
+
+// ---- simulation canvas ----
+export interface SimNode {
+  id: string
+  kind: string
+  x: number
+  y: number
+  /** Node settings: the item it reads, the operation, a constant… */
+  data: Record<string, unknown>
+  /** What-if nodes can be switched off without deleting them. */
+  off?: boolean
+}
+export interface SimEdge {
+  id: string
+  from: string
+  fromPort: string
+  to: string
+  toPort: string
+}
+export interface Sim extends Base {
+  type: 'sim'
+  nodes: SimNode[]
+  edges: SimEdge[]
+  pinned?: boolean
+}
+
+export type Item = Task | Habit | Goal | Person | LifeEvent | Note | FieldDef | Segment | Asset | LedgerEntry | Sim
 export type ItemType = Item['type']
 export type ItemOf<T extends ItemType> = Extract<Item, { type: T }>
 
@@ -106,6 +193,10 @@ export interface Profile {
   portrait?: string
   /** Starting level per attribute (who you already were before using the app). Missing = 1. */
   baseLevels?: Partial<Record<Attr, number>>
+  /** Net worth recorded once a month ("YYYY-MM" → yuan), for the trend chart. */
+  netWorth?: Record<string, number>
+  /** Extra trajectory tracks the user added, in display order. */
+  lanes?: string[]
 }
 
 export interface Snapshot {
@@ -145,6 +236,11 @@ export const TYPE_META: Record<ItemType, { label: string; route: string }> = {
   person: { label: '人物', route: '/people' },
   event: { label: '经历', route: '/timeline' },
   note: { label: '笔记', route: '/notes' },
+  field: { label: '字段', route: '/settings' },
+  segment: { label: '处境', route: '/trajectory' },
+  asset: { label: '资产', route: '/assets' },
+  ledger: { label: '收支', route: '/assets' },
+  sim: { label: '推演图', route: '/simulate' },
 }
 
 export const typeLabel = (it: Item) =>

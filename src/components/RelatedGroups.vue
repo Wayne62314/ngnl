@@ -19,10 +19,14 @@ const ui = useUi()
 const GROUPS: { type: ItemType; label: string }[] = [
   { type: 'person', label: '人物' },
   { type: 'goal', label: '目标' },
+  { type: 'segment', label: '轨迹' },
+  { type: 'asset', label: '资产' },
   { type: 'task', label: '任务' },
   { type: 'habit', label: '习惯' },
   { type: 'event', label: '经历' },
   { type: 'note', label: '灵感与情报' },
+  { type: 'ledger', label: '收支' },
+  { type: 'sim', label: '推演图' },
 ]
 const HOW: Partial<Record<RelationKind, string>> = {
   goal: '所属目标',

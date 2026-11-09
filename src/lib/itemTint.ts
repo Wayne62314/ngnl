@@ -15,5 +15,15 @@ export function tintOf(it: Item): string {
       return 'var(--text-2)'
     case 'note':
       return it.kind === 'intel' ? 'var(--attr-mind)' : 'var(--attr-spirit)'
+    case 'field':
+      return 'var(--text-3)'
+    case 'segment':
+      return 'var(--attr-mind)'
+    case 'asset':
+      return 'var(--gold)'
+    case 'ledger':
+      return 'var(--attr-career)'
+    case 'sim':
+      return 'var(--attr-career)'
   }
 }

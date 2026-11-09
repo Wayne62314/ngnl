@@ -19,6 +19,11 @@ const DEFAULTS: { [T in ItemType]: Partial<ItemOf<T>> } = {
   person: { closeness: 3 },
   event: { kind: 'event', feeling: 'neutral' },
   note: { kind: 'idea', status: 'seed' },
+  field: { kind: 'number' },
+  segment: { lane: 'home' },
+  asset: { category: 'item', status: 'owned' },
+  ledger: { flow: 'expense', amount: 0, repeat: 'none' },
+  sim: { nodes: [], edges: [] },
 }
 
 export const useData = defineStore('data', () => {
@@ -40,6 +45,11 @@ export const useData = defineStore('data', () => {
   const people = ofType('person')
   const events = ofType('event')
   const notes = ofType('note')
+  const fieldDefs = ofType('field')
+  const segments = ofType('segment')
+  const assets = ofType('asset')
+  const ledger = ofType('ledger')
+  const sims = ofType('sim')
 
   const linkMap = computed(() => {
     const m = new Map<string, Set<string>>()
@@ -219,6 +229,12 @@ export const useData = defineStore('data', () => {
         if (it.prereqIds?.includes(id)) update<Task>(it.id, { prereqIds: it.prereqIds.filter((x) => x !== id) })
       }
       if (it.type === 'goal' && it.parentId === id) update<Goal>(it.id, { parentId: item?.type === 'goal' ? (item.parentId ?? null) : null })
+      // A deleted field definition takes its values with it.
+      if (item?.type === 'field' && it.fields && id in it.fields) {
+        const fields = { ...it.fields }
+        delete fields[id]
+        update(it.id, { fields: Object.keys(fields).length ? fields : null })
+      }
     }
     await sync(api.remove(id))
   }
@@ -307,7 +323,7 @@ export const useData = defineStore('data', () => {
 
   return {
     items, links, checkins, moods, profile, loaded, loadError, meta, persisted,
-    byId, tasks, habits, goals, people, events, notes, linked, related, doneDates,
+    byId, tasks, habits, goals, people, events, notes, fieldDefs, segments, assets, ledger, sims, linked, related, doneDates,
     xp, totals, totalXp, level, moodOf,
     init, load, protect, exportBackup, snoozeBackup, create, update, remove, link, unlink, toggleCheckin, setMood, contact, logContact, removeContact, saveProfile, importSnapshot, wipe,
   }

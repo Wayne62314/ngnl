@@ -28,7 +28,7 @@ const CREATES: { type: ItemType; label: string; extra?: Record<string, unknown> 
 ]
 
 const rows = computed<Row[]>(() => {
-  const items = search(data.items, q.value, 12).map((item) => ({ kind: 'item' as const, item }))
+  const items = search(data.items.filter((i) => i.type !== 'field'), q.value, 12).map((item) => ({ kind: 'item' as const, item }))
   const creates = q.value.trim()
     ? CREATES.map((c) => ({ kind: 'create' as const, type: c.type, extra: c.extra, label: `新建${c.label}「${q.value.trim()}」` }))
     : []

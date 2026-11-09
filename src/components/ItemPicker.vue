@@ -15,7 +15,7 @@ onMounted(() => input.value?.focus())
 
 const results = computed(() => {
   const ex = new Set(props.exclude ?? [])
-  const pool = data.items.filter((i) => !ex.has(i.id) && (!props.types || props.types.includes(i.type)))
+  const pool = data.items.filter((i) => !ex.has(i.id) && (props.types ? props.types.includes(i.type) : i.type !== 'field'))
   return search(pool, q.value, 8)
 })
 

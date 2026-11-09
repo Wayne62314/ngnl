@@ -1,4 +1,4 @@
-import { CalendarDays, Flag, Lightbulb, Newspaper, Repeat, Swords, User } from 'lucide-vue-next'
+import { Backpack, CalendarDays, Flag, Lightbulb, MapPinned, Newspaper, Repeat, Swords, User, Variable, Wallet, Workflow } from 'lucide-vue-next'
 import type { Item } from './types'
 
 export const itemIcon = (it: Pick<Item, 'type'> & { kind?: string }) => {
@@ -15,6 +15,16 @@ export const itemIcon = (it: Pick<Item, 'type'> & { kind?: string }) => {
       return CalendarDays
     case 'note':
       return it.kind === 'intel' ? Newspaper : Lightbulb
+    case 'field':
+      return Variable
+    case 'segment':
+      return MapPinned
+    case 'asset':
+      return Backpack
+    case 'ledger':
+      return Wallet
+    case 'sim':
+      return Workflow
   }
 }
 

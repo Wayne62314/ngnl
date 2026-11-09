@@ -1,7 +1,7 @@
 import type { Item, ItemType, Profile, Snapshot, SyncClock } from './types'
 import { clockOf, emptyClock, linkKey } from './merge'
 
-export const ITEM_TYPES: readonly ItemType[] = ['task', 'habit', 'goal', 'person', 'event', 'note']
+export const ITEM_TYPES: readonly ItemType[] = ['task', 'habit', 'goal', 'person', 'event', 'note', 'field', 'segment', 'asset', 'ledger', 'sim']
 
 const now = () => new Date().toISOString()
 /**

@@ -14,7 +14,7 @@ const props = withDefaults(defineProps<{ id: string; max?: number; hide?: ItemTy
 const data = useData()
 const ui = useUi()
 
-const ORDER: ItemType[] = ['person', 'goal', 'task', 'habit', 'event', 'note']
+const ORDER: ItemType[] = ['person', 'goal', 'segment', 'asset', 'task', 'habit', 'event', 'note', 'ledger', 'sim', 'field']
 const all = computed(() =>
   data
     .linked(props.id)

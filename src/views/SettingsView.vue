@@ -10,6 +10,7 @@ import AiAssistantSection from '@/components/AiAssistantSection.vue'
 import SyncSection from '@/components/SyncSection.vue'
 import InstallSection from '@/components/InstallSection.vue'
 import DeleteSave from '@/components/DeleteSave.vue'
+import FieldLibrary from '@/components/FieldLibrary.vue'
 
 const data = useData()
 const ui = useUi()
@@ -111,6 +112,8 @@ async function protect() {
       </div>
       <DeleteSave />
     </section>
+
+    <FieldLibrary />
 
     <SyncSection />
 
