@@ -183,3 +183,15 @@ describe('merge', () => {
     expect(mergeSnapshots(a.s, phone.s, { union: true }).profile.name).toBe('阿岚')
   })
 })
+
+import { cleanSvg } from './mcpTools'
+describe('portrait svg from an AI', () => {
+  it('keeps drawing, drops scripts, handlers and external links', () => {
+    const out = cleanSvg('<svg viewBox="0 0 10 10"><script>alert(1)</script><circle onclick="x()" r="4"/><image href="https://evil/x.png"/><use href="#a"/></svg>')
+    expect(out).not.toMatch(/script|onclick|evil/)
+    expect(out).toContain('<circle')
+    expect(out).toContain('href="#a"')
+    expect(out).toContain('xmlns="http://www.w3.org/2000/svg"')
+    expect(() => cleanSvg('<div>no</div>')).toThrow()
+  })
+})

@@ -5,7 +5,7 @@ import { addDays, fromKey, today } from '@/lib/dates'
 import { achievements, attrLevel, bestStreak, rankOf, TIER_NAMES } from '@/lib/game'
 import { ATTR_ICON } from '@/lib/attrIcons'
 import { ATTRS, MOODS, type Profile } from '@/lib/types'
-import Avatar from '@/components/Avatar.vue'
+import CharacterCard from '@/components/CharacterCard.vue'
 import XpBar from '@/components/XpBar.vue'
 import Radar from '@/components/Radar.vue'
 import YearHeatmap from '@/components/YearHeatmap.vue'
@@ -73,7 +73,7 @@ const TIER_COLORS = ['#b87333', '#9aa4b1', 'var(--gold-2)', '#6ad1e3', '#c36bff'
   <div class="page">
     <section class="card sheet">
       <div class="id">
-        <Avatar :name="form.name" :size="96" />
+        <CharacterCard :width="230" class="sheet-card" />
         <div class="grow">
           <input v-model="form.name" class="name" placeholder="你的名字" @blur="save" />
           <div class="rankrow">
@@ -218,7 +218,19 @@ const TIER_COLORS = ['#b87333', '#9aa4b1', 'var(--gold-2)', '#6ad1e3', '#c36bff'
 .id {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 32px;
+}
+.sheet-card {
+  flex: none;
+}
+@media (max-width: 760px) {
+  .id {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sheet-card {
+    align-self: center;
+  }
 }
 .name,
 .title {

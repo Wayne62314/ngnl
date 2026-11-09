@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { Cake, Check, Flame, HardDriveDownload, Lightbulb, Newspaper, PhoneCall, Plus, Repeat, Sparkles, Sunrise, Swords, Smartphone, X } from 'lucide-vue-next'
+import { Cake, Check, Flame, HardDriveDownload, Lightbulb, Newspaper, PhoneCall, Plus, Sunrise, Smartphone, X } from 'lucide-vue-next'
 import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
 import { addDays, fromKey, greeting, today, weekdayLabel } from '@/lib/dates'
-import { activeStreak, contactOverdue, isScheduled, rankOf, streak, taskBucket } from '@/lib/game'
+import { activeStreak, contactOverdue, isScheduled, streak, taskBucket } from '@/lib/game'
 import { daysToBirthday } from '@/lib/people'
 import { useInstall } from '@/stores/install'
 import { titleOf } from '@/lib/itemView'
 import { attrOf, MOODS, type Task } from '@/lib/types'
 import Avatar from '@/components/Avatar.vue'
-import XpBar from '@/components/XpBar.vue'
 import TaskRow from '@/components/TaskRow.vue'
+import CharacterCard from '@/components/CharacterCard.vue'
 
 const data = useData()
 const router = useRouter()
@@ -45,7 +45,14 @@ const habitsDone = computed(() => habits.value.filter((h) => data.doneDates(h.id
 const xpToday = computed(() => data.xp.filter((e) => e.date === t).reduce((s, e) => s + e.xp, 0))
 const active = computed(() => activeStreak(data.xp, t))
 const taskTotal = computed(() => doneToday.value.length + todays.value.length + overdue.value.length)
-const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0)
+/** A line under the name that reacts to how the day is going. */
+const headline = computed(() => {
+  const left = todays.value.length + overdue.value.length
+  if (taskTotal.value && !left) return '今天的任务全部完成！'
+  if (doneToday.value.length) return `还剩 ${left} 件事，继续。`
+  if (left) return `今天有 ${left} 件事等你。`
+  return '今天想做点什么？'
+})
 
 // ---- mood ----
 const mood = computed(() => data.moodOf(t))
@@ -129,49 +136,54 @@ const needBackup = computed(() => {
 </script>
 
 <template>
-  <div class="page">
-    <header class="banner">
-      <RouterLink to="/character" class="who">
-        <div class="av">
-          <Avatar :name="data.profile.name" :size="68" />
-          <span class="lvbadge num">{{ data.level.level }}</span>
+  <div class="page today">
+    <!-- Hero: greeting | character card | today's quests -->
+    <section class="hero">
+      <div class="hero-left">
+        <div class="hello">{{ greeting() }} · {{ dateLine }}</div>
+        <h1 class="headline serif">{{ data.profile.name || '旅人' }}</h1>
+        <p class="tagline serif">{{ headline }}</p>
+        <div class="stats">
+          <div><b class="num">{{ doneToday.length }}<small>/{{ taskTotal }}</small></b><span>今日任务</span></div>
+          <div><b class="num">{{ habitsDone }}<small>/{{ habits.length }}</small></b><span>今日习惯</span></div>
+          <div><b class="num gold">+{{ xpToday }}</b><span>今日经验</span></div>
+          <div><b class="num" :class="{ fire: active > 0 }">{{ active }}</b><span>连续天数</span></div>
         </div>
-        <div class="grow">
-          <div class="hello">{{ greeting() }} · {{ dateLine }}</div>
-          <h1 class="name">{{ data.profile.name || '旅人' }}</h1>
-          <div class="rankline">
-            <span class="rank">{{ data.profile.title || rankOf(data.level.level).title }}</span>
-            <span class="lvtext num">Lv.{{ data.level.level }}</span>
+        <form class="quick-hero" @submit.prevent="addTask">
+          <input v-model="quick" placeholder="记一件今天要做的事…" aria-label="添加今天要做的事" />
+          <button class="btn primary" type="submit" :disabled="!quick.trim()"><Plus />添加</button>
+        </form>
+        <div class="xpline faint num">Lv.{{ data.level.level }} · {{ data.level.into }} / {{ data.level.need }} XP · 距 Lv.{{ data.level.level + 1 }} 还差 {{ data.level.need - data.level.into }}</div>
+      </div>
+
+      <div class="hero-card">
+        <CharacterCard :width="320" />
+      </div>
+
+      <div class="hero-right">
+        <h2 class="section-title">今天要做 <span class="count">{{ todays.length + overdue.length }}</span></h2>
+        <div class="card tasks">
+
+          <div v-if="overdue.length" class="overdue">
+            <div class="sub-head">逾期 · 选一个处理方式，不扣分</div>
+            <TaskRow v-for="x in overdue" :key="x.id" :task="x">
+              <div class="fix" @click.stop>
+                <button class="btn sm" @click="reschedule(x, t)">今天做</button>
+                <button class="btn sm ghost" @click="reschedule(x, addDays(t, 1))">明天</button>
+                <button class="btn sm ghost" @click="drop(x)">放下</button>
+              </div>
+            </TaskRow>
           </div>
-          <div class="xp"><XpBar :into="data.level.into" :need="data.level.need" :height="8" /></div>
-          <div class="xpnums num">{{ data.level.into }} / {{ data.level.need }} XP · 距 Lv.{{ data.level.level + 1 }} 还差 {{ data.level.need - data.level.into }}</div>
-        </div>
-      </RouterLink>
-      <div class="quests">
-        <div class="quest">
-          <Swords :size="18" />
-          <b class="num">{{ doneToday.length }}<small>/{{ taskTotal }}</small></b>
-          <span>今日任务</span>
-          <i :style="{ width: `${pct(doneToday.length, taskTotal)}%` }" />
-        </div>
-        <div class="quest">
-          <Repeat :size="18" />
-          <b class="num">{{ habitsDone }}<small>/{{ habits.length }}</small></b>
-          <span>今日习惯</span>
-          <i :style="{ width: `${pct(habitsDone, habits.length)}%` }" />
-        </div>
-        <div class="quest gold">
-          <Sparkles :size="18" />
-          <b class="num">+{{ xpToday }}</b>
-          <span>今日经验</span>
-        </div>
-        <div class="quest fire" :class="{ lit: active > 0 }">
-          <Flame :size="18" />
-          <b class="num">{{ active }}<small>天</small></b>
-          <span>连续活跃</span>
+
+          <div class="list">
+            <TaskRow v-for="x in todays" :key="x.id" :task="x" />
+            <TaskRow v-for="x in doneToday" :key="x.id" :task="x" />
+          </div>
+          <div v-if="!todays.length && !overdue.length && !doneToday.length" class="none faint">今天还没有安排。在上面写下一件小事吧。</div>
+          <RouterLink to="/tasks" class="more">全部任务 →</RouterLink>
         </div>
       </div>
-    </header>
+    </section>
 
     <section v-if="showNudge" class="card nudge">
       <Smartphone :size="20" />
@@ -209,61 +221,29 @@ const needBackup = computed(() => {
       </div>
     </section>
 
-    <div class="grid">
-      <div class="col">
-        <section>
-          <h2 class="section-title">今天要做 <span class="count">{{ todays.length + overdue.length }}</span></h2>
-          <div class="card">
-            <form class="quick" @submit.prevent="addTask">
-              <Plus :size="16" class="faint" />
-              <input v-model="quick" class="grow" placeholder="添加今天要做的事，回车保存" />
-            </form>
-
-            <div v-if="overdue.length" class="overdue">
-              <div class="sub-head">逾期 · 选一个处理方式，不扣分</div>
-              <TaskRow v-for="x in overdue" :key="x.id" :task="x">
-                <div class="fix" @click.stop>
-                  <button class="btn sm" @click="reschedule(x, t)">今天做</button>
-                  <button class="btn sm ghost" @click="reschedule(x, addDays(t, 1))">明天</button>
-                  <button class="btn sm ghost" @click="drop(x)">放下</button>
-                </div>
-              </TaskRow>
-            </div>
-
-            <div class="list">
-              <TaskRow v-for="x in todays" :key="x.id" :task="x" />
-              <TaskRow v-for="x in doneToday" :key="x.id" :task="x" />
-            </div>
-            <div v-if="!todays.length && !overdue.length && !doneToday.length" class="none faint">今天还没有安排。在上面写下一件小事吧。</div>
-            <RouterLink to="/tasks" class="more">全部任务 →</RouterLink>
-          </div>
-        </section>
-
-        <section>
-          <h2 class="section-title">今日习惯 <span class="count">{{ habitsDone }} / {{ habits.length }}</span></h2>
-          <div v-if="habits.length" class="habits">
-            <button
-              v-for="h in habits"
-              :key="h.id"
-              class="habit card"
-              :class="{ on: data.doneDates(h.id).has(t) }"
-              :style="{ '--c': attrOf(h.attr).color }"
-              @click="data.toggleCheckin(h.id)"
-              @contextmenu.prevent="ui.open(h.id)"
-            >
-              <span class="check round" :class="{ on: data.doneDates(h.id).has(t) }"><Check /></span>
-              <span class="grow ellipsis">{{ titleOf(h) }}</span>
-              <span v-if="streak(h, data.doneDates(h.id), t)" class="streak num"><Flame :size="13" />{{ streak(h, data.doneDates(h.id), t) }}</span>
-            </button>
-          </div>
-          <div v-else class="card none faint">
-            今天没有排习惯。<RouterLink to="/habits">去添加 →</RouterLink>
-          </div>
-        </section>
+    <section class="row-2">
+      <div>
+        <h2 class="section-title">今日习惯 <span class="count">{{ habitsDone }} / {{ habits.length }}</span></h2>
+        <div v-if="habits.length" class="habits">
+          <button
+            v-for="h in habits"
+            :key="h.id"
+            class="habit card"
+            :class="{ on: data.doneDates(h.id).has(t) }"
+            :style="{ '--c': attrOf(h.attr).color }"
+            @click="data.toggleCheckin(h.id)"
+            @contextmenu.prevent="ui.open(h.id)"
+          >
+            <span class="check round" :class="{ on: data.doneDates(h.id).has(t) }"><Check /></span>
+            <span class="grow ellipsis">{{ titleOf(h) }}</span>
+            <span v-if="streak(h, data.doneDates(h.id), t)" class="streak num"><Flame :size="13" />{{ streak(h, data.doneDates(h.id), t) }}</span>
+          </button>
+        </div>
+        <div v-else class="card none faint">
+          今天没有排习惯。<RouterLink to="/habits">去添加 →</RouterLink>
+        </div>
       </div>
-
-      <div class="col">
-        <section class="card card-pad">
+      <section class="card card-pad">
           <h2 class="section-title">今天心情如何</h2>
           <div class="moods">
             <button v-for="m in MOODS" :key="m.v" :class="{ on: mood?.mood === m.v }" :title="m.label" @click="pickMood(m.v)">
@@ -279,18 +259,19 @@ const needBackup = computed(() => {
             @blur="saveMoodNote"
             @keydown.enter="($event.target as HTMLInputElement).blur()"
           />
-        </section>
+      </section>
+    </section>
 
-        <section class="card card-pad">
+    <section class="row-2">
+      <section class="card card-pad">
           <h2 class="section-title">随手记</h2>
           <textarea v-model="capture" class="textarea" rows="3" placeholder="一个想法、一条有用的信息…（第一行是标题）" @keydown.ctrl.enter="captureNote('idea')" />
           <div class="row cap-btns">
             <button class="btn sm" :disabled="!capture.trim()" @click="captureNote('idea')"><Lightbulb />存为灵感</button>
             <button class="btn sm" :disabled="!capture.trim()" @click="captureNote('intel')"><Newspaper />存为情报</button>
           </div>
-        </section>
-
-        <section v-if="reachOut.length || birthdays.length" class="card card-pad">
+      </section>
+      <section v-if="reachOut.length || birthdays.length" class="card card-pad">
           <h2 class="section-title">{{ birthdays.length ? '记得联系' : '好久没联系' }}</h2>
           <div class="people">
             <div v-for="{ p, days } in birthdays" :key="p.id" class="person" @click="ui.open(p.id)">
@@ -310,27 +291,12 @@ const needBackup = computed(() => {
               <button class="btn sm ghost" title="今天联系过" @click.stop="data.contact(p.id)"><PhoneCall />联系过</button>
             </div>
           </div>
-        </section>
-      </div>
-    </div>
+      </section>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-  gap: 24px;
-  align-items: start;
-}
-.col {
-  display: grid;
-  gap: 24px;
-  min-width: 0;
-}
-.col > * {
-  min-width: 0;
-}
 .nudge {
   display: flex;
   align-items: center;
@@ -483,177 +449,6 @@ const needBackup = computed(() => {
   font-weight: 700;
   color: var(--attr-craft);
 }
-.banner {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 24px;
-  align-items: center;
-  padding: 22px 24px;
-  margin-bottom: 20px;
-  border-radius: 20px;
-  overflow: hidden;
-  color: #f4f1ea;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(226, 176, 74, 0.28), transparent 45%),
-    radial-gradient(circle at 100% 100%, rgba(120, 86, 220, 0.25), transparent 50%),
-    linear-gradient(135deg, #1d1b27, #2a2537);
-  box-shadow: var(--shadow-lg);
-}
-/* faint hexagon pattern */
-.banner::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0.07;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='64' viewBox='0 0 56 64'%3E%3Cpath d='M28 2l24 14v32L28 62 4 48V16z' fill='none' stroke='%23e2b04a' stroke-width='1.5'/%3E%3C/svg%3E");
-  pointer-events: none;
-}
-.who {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-}
-.av {
-  position: relative;
-  flex: none;
-  filter: drop-shadow(0 0 18px rgba(226, 176, 74, 0.35));
-}
-.lvbadge {
-  position: absolute;
-  right: -6px;
-  bottom: -2px;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 6px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-  font-weight: 800;
-  color: #1c1a24;
-  background: linear-gradient(135deg, #f0c869, #c08a22);
-  border: 2px solid #1d1b27;
-}
-.hello {
-  font-size: 13px;
-  color: rgba(244, 241, 234, 0.6);
-}
-.name {
-  margin: 2px 0 4px;
-  font-size: 26px;
-  font-weight: 800;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.rankline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.rank {
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #f0c869;
-  background: rgba(226, 176, 74, 0.14);
-  border: 1px solid rgba(226, 176, 74, 0.35);
-}
-.lvtext {
-  font-weight: 800;
-  color: #f0c869;
-}
-/* The XP bar's track uses --sunken; give it a light track on the dark banner. */
-.xp {
-  max-width: 420px;
-  --sunken: rgba(255, 255, 255, 0.12);
-}
-.xpnums {
-  margin-top: 6px;
-  font-size: 12px;
-  color: rgba(244, 241, 234, 0.55);
-}
-.quests {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(2, 136px);
-  gap: 10px;
-}
-.quest {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 10px;
-  align-items: center;
-  padding: 11px 14px 13px;
-  border-radius: 14px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(244, 241, 234, 0.6);
-}
-.quest svg {
-  grid-row: span 2;
-}
-.quest b {
-  font-size: 20px;
-  line-height: 1.1;
-  color: #f4f1ea;
-}
-.quest small {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(244, 241, 234, 0.45);
-  margin-left: 1px;
-}
-.quest span {
-  font-size: 12px;
-}
-.quest i {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #f0c869, #c08a22);
-  transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.quest.gold svg,
-.quest.gold b {
-  color: #f0c869;
-}
-.quest.fire.lit svg {
-  color: #ff8a3d;
-  filter: drop-shadow(0 0 6px rgba(255, 138, 61, 0.6));
-}
-@media (max-width: 980px) {
-  .banner {
-    grid-template-columns: 1fr;
-  }
-  .quests {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-@media (max-width: 760px) {
-  .banner {
-    padding: 18px 16px;
-    border-radius: 16px;
-    gap: 16px;
-  }
-  .name {
-    font-size: 22px;
-  }
-  .quests {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 .moods {
   display: flex;
   justify-content: space-between;
@@ -731,13 +526,156 @@ const needBackup = computed(() => {
   font-size: 12px;
 }
 /* Below this the side column moves under the main one, as a two-up grid. */
+/* ---- option B hero ---- */
+.today {
+  max-width: 1240px;
+}
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px minmax(0, 1.05fr);
+  gap: 40px;
+  align-items: start;
+  margin: 8px 0 36px;
+}
+.hero > * {
+  min-width: 0;
+}
+.hello {
+  font-size: 14px;
+  color: var(--text-2);
+}
+.headline {
+  margin: 6px 0 0;
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.04em;
+}
+.tagline {
+  margin: 8px 0 0;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+  margin-top: 30px;
+}
+.stats b {
+  display: block;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.stats small {
+  font-size: 16px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+.stats span {
+  font-size: 13px;
+  color: var(--text-2);
+}
+.stats .gold {
+  color: var(--gold);
+}
+.stats .fire {
+  color: var(--attr-craft);
+}
+.quick-hero {
+  display: flex;
+  gap: 8px;
+  margin-top: 30px;
+}
+.quick-hero input {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  outline: none;
+}
+.quick-hero input:focus {
+  border-color: var(--gold);
+}
+.quick-hero .btn {
+  height: 46px;
+  border-radius: 14px;
+  padding: 0 18px;
+}
+.xpline {
+  margin-top: 14px;
+  font-size: 12px;
+}
+.hero-card {
+  display: flex;
+  justify-content: center;
+}
+.tasks {
+  overflow: hidden;
+}
+.row-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 20px;
+}
+.row-2 > * {
+  min-width: 0;
+}
 @media (max-width: 1180px) {
-  .grid {
-    grid-template-columns: 1fr;
+  .hero {
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 28px 36px;
   }
-  .col:last-child {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    align-items: start;
+  .hero-card {
+    grid-row: span 2;
+    order: -1;
+  }
+  .headline {
+    font-size: 40px;
+  }
+}
+@media (max-width: 760px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+  .hero-card {
+    grid-row: auto;
+    order: 0;
+  }
+  .hero-card :deep(.card-wrap) {
+    --w: 250px !important;
+  }
+  .headline {
+    font-size: 34px;
+  }
+  .tagline {
+    font-size: 18px;
+  }
+  .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .stats b {
+    font-size: 22px;
+  }
+  .stats small {
+    font-size: 12px;
+  }
+  .stats span {
+    font-size: 11px;
+  }
+  .row-2 {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

@@ -20,12 +20,13 @@ import {
 } from './game'
 import { contactLog, daysToBirthday } from './people'
 import { search as searchItems, titleOf } from './itemView'
+import { PRESETS } from './portraits'
 import { ATTRS, MOODS, type Goal, type Item, type ItemType, type Person, type Task } from './types'
 
 type Data = ReturnType<typeof useData>
 type Args = Record<string, unknown>
 
-export const WRITE_TOOLS = new Set(['create_item', 'update_item', 'checkin_habit', 'log_contact', 'link_items', 'set_mood'])
+export const WRITE_TOOLS = new Set(['create_item', 'update_item', 'checkin_habit', 'log_contact', 'link_items', 'set_mood', 'set_portrait'])
 
 export const TOOL_LABELS: Record<string, string> = {
   get_overview: '查看总览',
@@ -42,6 +43,7 @@ export const TOOL_LABELS: Record<string, string> = {
   log_contact: '记录联系',
   link_items: '关联条目',
   set_mood: '记录心情',
+  set_portrait: '设置立绘',
 }
 
 const TYPES: ItemType[] = ['task', 'habit', 'goal', 'person', 'event', 'note']
@@ -245,6 +247,23 @@ export function runTool(data: Data, name: string, a: Args): unknown {
   }
 }
 
+/**
+ * The portrait is only ever shown through <img>, where SVG can't run scripts
+ * or load anything; this also strips those parts so the stored file stays tidy.
+ */
+export function cleanSvg(svg: string): string {
+  const s = svg.trim()
+  if (!/^<svg[\s>]/i.test(s) || !/<\/svg>\s*$/i.test(s)) throw new Error('svg 需要是完整的 <svg>…</svg>')
+  if (s.length > 200_000) throw new Error('svg 太大（上限 200KB）')
+  let out = s
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*')/gi, '')
+    .replace(/(href\s*=\s*)("|')(?!#|data:image\/)[^"']*\2/gi, '$1$2#$2')
+  if (!/xmlns=/.test(out)) out = out.replace(/^<svg/i, '<svg xmlns="http://www.w3.org/2000/svg"')
+  return out
+}
+
 /** Write tools are async because they go through the store's save path. */
 export async function runWriteTool(data: Data, name: string, a: Args): Promise<unknown> {
   switch (name) {
@@ -295,6 +314,21 @@ export async function runWriteTool(data: Data, name: string, a: Args): Promise<u
       if (!Number.isInteger(mood) || mood < 1 || mood > 5) throw new Error('mood 需要 1-5')
       await data.setMood(date, mood, String(a.note ?? ''))
       return { date, mood: `${mood} ${MOODS[mood - 1].label}` }
+    }
+    case 'set_portrait': {
+      const profile = { ...data.profile }
+      if (a.reset) {
+        delete profile.portrait
+      } else if (typeof a.preset === 'string') {
+        if (!PRESETS.some((p) => p.key === a.preset)) throw new Error('没有这个内置角色')
+        profile.portrait = 'preset:' + a.preset
+      } else if (typeof a.svg === 'string') {
+        profile.portrait = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(cleanSvg(a.svg))
+      } else {
+        throw new Error('需要 svg、preset 或 reset 之一')
+      }
+      await data.saveProfile(profile)
+      return { ok: true, portrait: profile.portrait ? (profile.portrait.startsWith('preset:') ? profile.portrait : 'svg') : 'default' }
     }
     default:
       throw new Error(`未知工具：${name}`)

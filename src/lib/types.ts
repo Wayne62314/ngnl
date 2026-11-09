@@ -102,6 +102,8 @@ export interface Profile {
   strengths?: string
   weaknesses?: string
   interests?: string
+  /** "preset:<key>" or an image data URL (see portraits.ts). */
+  portrait?: string
 }
 
 export interface Snapshot {

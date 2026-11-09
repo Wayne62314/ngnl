@@ -20,7 +20,7 @@ const ui = useUi()
 .toasts {
   position: fixed;
   right: 24px;
-  bottom: 24px;
+  bottom: 100px;
   z-index: 100;
   display: grid;
   gap: 8px;

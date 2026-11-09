@@ -1,14 +1,30 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue'
-import { RouterLink, RouterView } from 'vue-router'
-import { BookOpenText, CalendarDays, History, Lightbulb, Network, Repeat, Search, Settings, Swords, UserRound, Users, Cloud, CloudOff, RefreshCw, Download } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
+import {
+  BookOpenText,
+  CalendarDays,
+  Cloud,
+  CloudOff,
+  Download,
+  Ellipsis,
+  History,
+  Lightbulb,
+  Network,
+  RefreshCw,
+  Repeat,
+  Search,
+  Settings,
+  Swords,
+  UserRound,
+  Users,
+  X,
+} from 'lucide-vue-next'
 import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
 import { useMcp } from '@/stores/mcp'
 import { useSync } from '@/stores/sync'
 import { useInstall } from '@/stores/install'
-import Avatar from '@/components/Avatar.vue'
-import XpBar from '@/components/XpBar.vue'
 import ItemDrawer from '@/components/ItemDrawer.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import Toasts from '@/components/Toasts.vue'
@@ -19,23 +35,32 @@ const data = useData()
 const ui = useUi()
 const sync = useSync()
 const inst = useInstall()
+const route = useRoute()
 
+/** Everything in the dock, in order. `phone` marks the four that stay on the phone tab bar (the rest go under 更多). */
 const nav = [
-  { to: '/', label: '今日', icon: CalendarDays },
+  { to: '/', label: '今日', icon: CalendarDays, phone: true },
   { to: '/character', label: '角色', icon: UserRound },
-  { to: '/tasks', label: '任务', icon: Swords },
-  { to: '/habits', label: '习惯', icon: Repeat },
+  { to: '/tasks', label: '任务', icon: Swords, phone: true },
+  { to: '/habits', label: '习惯', icon: Repeat, phone: true },
   { to: '/goals', label: '愿景树', icon: Network },
-  { to: '/people', label: '人物', icon: Users },
+  { to: '/people', label: '人物', icon: Users, phone: true },
   { to: '/timeline', label: '经历', icon: History },
-  { to: '/notes', label: '灵感与情报', icon: Lightbulb },
+  { to: '/notes', label: '灵感', icon: Lightbulb },
 ]
+const more = computed(() => [...nav.filter((n) => !n.phone), { to: '/settings', label: '设置与备份', icon: Settings }])
+const moreActive = computed(() => more.value.some((n) => n.to === route.path))
+const moreOpen = ref(false)
+watch(() => route.fullPath, () => (moreOpen.value = false))
+
+const syncLabel = computed(() => ({ idle: '已同步', syncing: '同步中…', offline: '离线', error: '同步出错', off: '' })[sync.state])
 
 function onKey(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
     ui.paletteOpen = !ui.paletteOpen
   }
+  if (e.key === 'Escape') moreOpen.value = false
 }
 onMounted(() => {
   data.init().then(() => {
@@ -49,53 +74,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 <template>
   <div class="shell">
-    <aside class="side">
+    <header class="top">
       <RouterLink to="/" class="brand">
         <svg viewBox="0 0 64 64" class="brand-mark" aria-hidden="true">
-          <path d="M32 6l22 12.7v26.6L32 58 10 45.3V18.7z" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linejoin="round" />
+          <path d="M32 6l22 12.7v26.6L32 58 10 45.3V18.7z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
           <path d="M32 21l9.5 5.5v11L32 43l-9.5-5.5v-11z" fill="currentColor" />
         </svg>
-        <span>NoGameNoLife</span>
+        <span class="serif">人生面板</span>
       </RouterLink>
-
-      <RouterLink to="/character" class="me">
-        <Avatar :name="data.profile.name" :size="40" />
-        <div class="grow">
-          <div class="row" style="justify-content: space-between">
-            <b class="ellipsis">{{ data.profile.name || '无名旅人' }}</b>
-            <span class="lv num">Lv.{{ data.level.level }}</span>
-          </div>
-          <XpBar :into="data.level.into" :need="data.level.need" :height="5" />
-        </div>
-      </RouterLink>
-
-      <button class="search" @click="ui.paletteOpen = true">
-        <Search :size="15" />
-        <span class="grow">搜索或新建</span>
-        <kbd>Ctrl K</kbd>
-      </button>
-
-      <nav class="nav">
-        <RouterLink v-for="n in nav" :key="n.to" :to="n.to" class="nav-item">
-          <component :is="n.icon" :size="18" />
-          <span>{{ n.label }}</span>
-        </RouterLink>
-      </nav>
-
-      <div class="side-foot">
-        <button v-if="inst.platform === 'prompt'" class="install" @click="inst.install()">
-          <Download :size="15" />安装为应用
-        </button>
-        <RouterLink v-if="sync.enabled" to="/settings" class="sync-pill" :class="sync.state" :title="sync.error || '多设备同步'">
+      <div class="top-right">
+        <RouterLink v-if="sync.enabled" to="/settings#sync" class="sync-pill" :class="sync.state" :title="sync.error || '多设备同步'">
           <component :is="sync.state === 'offline' || sync.state === 'error' ? CloudOff : sync.state === 'syncing' ? RefreshCw : Cloud" :size="14" />
-          {{ { idle: '已同步', syncing: '同步中…', offline: '离线 · 稍后同步', error: '同步出错', off: '' }[sync.state] }}
+          <span>{{ syncLabel }}</span>
         </RouterLink>
-        <RouterLink to="/settings" class="nav-item">
-          <Settings :size="18" />
-          <span>设置与备份</span>
-        </RouterLink>
+        <button v-if="inst.platform === 'prompt'" class="pill install" @click="inst.install()"><Download :size="15" /><span>安装为应用</span></button>
+        <button class="pill search" aria-label="搜索或新建" @click="ui.paletteOpen = true">
+          <Search :size="15" />
+          <span class="label">搜索或新建</span>
+          <kbd>Ctrl K</kbd>
+        </button>
       </div>
-    </aside>
+    </header>
 
     <main class="main">
       <div v-if="data.loadError" class="page">
@@ -115,16 +114,49 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </RouterView>
     </main>
 
-    <nav class="tabbar">
-      <RouterLink v-for="n in nav" :key="n.to" :to="n.to" class="tab">
-        <component :is="n.icon" :size="20" />
+    <!-- Desktop: floating dock with every section -->
+    <nav class="dock" aria-label="主菜单">
+      <RouterLink v-for="n in nav" :key="n.to" :to="n.to" class="dock-item">
+        <component :is="n.icon" :size="19" />
         <span>{{ n.label }}</span>
       </RouterLink>
-      <RouterLink to="/settings" class="tab">
-        <Settings :size="20" />
-        <span>设置</span>
+      <span class="dock-sep" aria-hidden="true" />
+      <RouterLink to="/settings" class="dock-item icon-only" aria-label="设置与备份" title="设置与备份">
+        <Settings :size="19" />
       </RouterLink>
     </nav>
+
+    <!-- Phone: four main tabs + 更多 -->
+    <nav class="tabbar" aria-label="主菜单">
+      <RouterLink v-for="n in nav.filter((x) => x.phone)" :key="n.to" :to="n.to" class="tab">
+        <component :is="n.icon" :size="21" />
+        <span>{{ n.label }}</span>
+      </RouterLink>
+      <button class="tab" :class="{ 'router-link-exact-active': moreActive }" :aria-expanded="moreOpen" @click="moreOpen = !moreOpen">
+        <Ellipsis :size="21" />
+        <span>更多</span>
+      </button>
+    </nav>
+    <Transition name="sheet">
+      <div v-if="moreOpen" class="more-scrim" @click.self="moreOpen = false">
+        <div class="more-sheet" role="dialog" aria-label="更多">
+          <div class="more-head">
+            <b class="serif">更多</b>
+            <button class="btn ghost sm icon" aria-label="关闭" @click="moreOpen = false"><X /></button>
+          </div>
+          <div class="more-grid">
+            <RouterLink v-for="n in more" :key="n.to" :to="n.to" class="more-item">
+              <component :is="n.icon" :size="22" />
+              <span>{{ n.label }}</span>
+            </RouterLink>
+            <button class="more-item" @click="(moreOpen = false), (ui.paletteOpen = true)">
+              <Search :size="22" />
+              <span>搜索</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <ItemDrawer />
     <CommandPalette />
@@ -136,151 +168,86 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 <style scoped>
 .shell {
-  display: flex;
   min-height: 100vh;
 }
-.side {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  width: 236px;
-  flex: none;
+.top {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 18px 48px 0;
   display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 20px 14px;
-  border-right: 1px solid var(--border);
-  background: var(--surface-2);
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 2px 8px;
   text-decoration: none;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.02em;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 0.06em;
 }
 .brand-mark {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   color: var(--gold);
 }
-.me {
+.top-right {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px;
-  border-radius: var(--radius);
-  background: var(--surface);
+}
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
   border: 1px solid var(--border);
-  text-decoration: none;
-  transition: border-color 0.15s;
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 13px;
 }
-.me:hover {
+.pill:hover {
   border-color: var(--border-strong);
-}
-.me b {
-  font-size: 14px;
-}
-.lv {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gold);
-}
-.me .row {
-  margin-bottom: 6px;
+  color: var(--text);
 }
 .search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-3);
-  cursor: pointer;
+  min-width: 220px;
+}
+.search .label {
+  flex: 1;
   text-align: left;
 }
-.search:hover {
-  border-color: var(--border-strong);
-  color: var(--text-2);
-}
-kbd {
-  font-family: inherit;
+.search kbd {
+  font-family: ui-monospace, Consolas, monospace;
   font-size: 11px;
-  padding: 1px 5px;
-  border-radius: 5px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-}
-.nav {
-  display: grid;
-  gap: 2px;
-}
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 36px;
-  padding: 0 10px;
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  color: var(--text-2);
-  font-weight: 500;
-  transition: background 0.12s, color 0.12s;
-}
-.nav-item:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-.nav-item.router-link-exact-active {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow);
-}
-.nav-item.router-link-exact-active svg {
-  color: var(--gold);
+  color: var(--text-3);
 }
 .install {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: calc(100% - 8px);
-  margin: 0 4px 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px dashed color-mix(in srgb, var(--gold) 55%, transparent);
-  background: var(--gold-soft);
   color: var(--gold);
-  font: inherit;
-  font-size: 13px;
+  border-color: color-mix(in srgb, var(--gold) 45%, transparent);
+  background: var(--gold-soft);
   font-weight: 600;
-  cursor: pointer;
-}
-.install:hover {
-  border-style: solid;
 }
 .sync-pill {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 8px 6px;
   font-size: 12px;
-  color: var(--attr-body);
+  color: var(--ok);
   text-decoration: none;
+  padding: 0 4px;
 }
-.sync-pill.syncing {
+.sync-pill.syncing,
+.sync-pill.offline {
   color: var(--text-3);
 }
 .sync-pill.syncing svg {
   animation: spin 1s linear infinite;
-}
-.sync-pill.offline {
-  color: var(--text-3);
 }
 .sync-pill.error {
   color: var(--danger);
@@ -290,13 +257,6 @@ kbd {
     transform: rotate(360deg);
   }
 }
-.side-foot {
-  margin-top: auto;
-}
-.main {
-  flex: 1;
-  min-width: 0;
-}
 .offline {
   display: flex;
   gap: 16px;
@@ -304,9 +264,61 @@ kbd {
 }
 .offline b {
   color: var(--text);
-  font-size: 16px;
 }
-.tabbar {
+
+/* ---- floating dock ---- */
+.dock {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 7px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+.dock-item {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.dock-item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.dock-item.router-link-exact-active {
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 700;
+}
+.dock-item.icon-only {
+  width: 44px;
+  padding: 0;
+  justify-content: center;
+}
+.dock-sep {
+  width: 1px;
+  height: 26px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.tabbar,
+.more-scrim {
   display: none;
 }
 
@@ -322,34 +334,128 @@ kbd {
   opacity: 0;
 }
 
+/* Medium screens: labels go, icons stay. */
+@media (max-width: 1080px) {
+  .dock-item {
+    padding: 0 12px;
+  }
+  .dock-item span {
+    display: none;
+  }
+  .dock-item.router-link-exact-active span {
+    display: inline;
+  }
+}
+
+/* ---- phone ---- */
 @media (max-width: 760px) {
-  .side {
+  .top {
+    padding: 12px 16px 0;
+  }
+  .search {
+    min-width: 0;
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+  .search .label,
+  .search kbd,
+  .install span {
+    display: none;
+  }
+  .dock {
     display: none;
   }
   .tabbar {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     position: fixed;
     inset: auto 0 0 0;
     z-index: 30;
-    overflow-x: auto;
-    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(14px);
     border-top: 1px solid var(--border);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
-    scrollbar-width: none;
   }
   .tab {
-    flex: none;
-    min-width: 64px;
     display: grid;
     justify-items: center;
     gap: 2px;
+    min-height: 48px;
+    align-content: center;
     font-size: 11px;
     color: var(--text-3);
     text-decoration: none;
-    padding: 4px 6px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
   }
   .tab.router-link-exact-active {
     color: var(--gold);
+    font-weight: 700;
+  }
+  .more-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(20, 15, 8, 0.35);
+  }
+  .more-sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 14px 16px calc(18px + env(safe-area-inset-bottom));
+    border-radius: 22px 22px 0 0;
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+  }
+  .more-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 17px;
+  }
+  .more-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .more-item {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    padding: 14px 4px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .more-item.router-link-exact-active {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .sheet-enter-active,
+  .sheet-leave-active {
+    transition: opacity 0.2s;
+  }
+  .sheet-enter-active .more-sheet,
+  .sheet-leave-active .more-sheet {
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .sheet-enter-from,
+  .sheet-leave-to {
+    opacity: 0;
+  }
+  .sheet-enter-from .more-sheet,
+  .sheet-leave-to .more-sheet {
+    transform: translateY(100%);
   }
 }
 </style>

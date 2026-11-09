@@ -14,7 +14,7 @@
 import { createServer } from 'node:http'
 import { createHash, randomUUID } from 'node:crypto'
 
-const VERSION = '1.0.0'
+const VERSION = '1.1.0'
 const PORTS = [5311, 5312, 5313, 5314, 5315]
 const ORIGINS = new Set([
   'https://wayne62314.github.io',
@@ -117,6 +117,19 @@ const TOOLS = [
     name: 'link_items',
     description: '关联两个条目（例如人物与经历、灵感与目标；两个人物关联表示他们互相认识）。unlink 为 true 时取消关联。',
     inputSchema: { type: 'object', properties: { a: str('条目 id'), b: str('条目 id'), unlink: { type: 'boolean' } }, required: ['a', 'b'] },
+  },
+  {
+    name: 'set_portrait',
+    description:
+      '设置角色卡上的立绘。可以传 svg（你画的一张 SVG 立绘：viewBox 建议 0 0 320 420 的竖版半身像，带背景，风格与人物的属性和档案相符；不要用 <script>、外链图片或字体），或 preset（内置角色之一：scholar 学者 / warrior 战士 / artisan 工匠 / envoy 使者 / merchant 商人 / hermit 隐士），或 reset: true 恢复默认。画之前可以先用 get_overview 了解角色。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        svg: str('完整的 <svg>…</svg> 源码，最大 200KB'),
+        preset: { type: 'string', enum: ['scholar', 'warrior', 'artisan', 'envoy', 'merchant', 'hermit'] },
+        reset: { type: 'boolean' },
+      },
+    },
   },
   {
     name: 'set_mood',
