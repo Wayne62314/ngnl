@@ -11,6 +11,7 @@ import {
   MapPinned,
   Backpack,
   Workflow,
+  Orbit,
   Lightbulb,
   Network,
   RefreshCw,
@@ -51,6 +52,7 @@ const nav = [
   { to: '/trajectory', label: '轨迹', icon: MapPinned },
   { to: '/assets', label: '资产', icon: Backpack },
   { to: '/simulate', label: '推演', icon: Workflow },
+  { to: '/graph', label: '星图', icon: Orbit },
   { to: '/notes', label: '灵感', icon: Lightbulb },
 ]
 const more = computed(() => [...nav.filter((n) => !n.phone), { to: '/settings', label: '设置与备份', icon: Settings }])
