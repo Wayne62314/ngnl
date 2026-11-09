@@ -201,7 +201,13 @@ const TIER_COLORS = ['#b87333', '#9aa4b1', 'var(--gold-2)', '#6ad1e3', '#c36bff'
 }
 .page {
   display: grid;
+  /* minmax(0, 1fr): without it, wide content (the year heatmap) stretches the
+     column past the screen and phones zoom the whole page out. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
+}
+.page > * {
+  min-width: 0;
 }
 .sheet {
   padding: 26px 28px;

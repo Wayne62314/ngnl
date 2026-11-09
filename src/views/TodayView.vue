@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
-import { Cake, Check, Flame, HardDriveDownload, Lightbulb, Newspaper, PhoneCall, Plus, Repeat, Sparkles, Sunrise, Swords } from 'lucide-vue-next'
+import { RouterLink, useRouter } from 'vue-router'
+import { Cake, Check, Flame, HardDriveDownload, Lightbulb, Newspaper, PhoneCall, Plus, Repeat, Sparkles, Sunrise, Swords, Smartphone, X } from 'lucide-vue-next'
 import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
 import { addDays, fromKey, greeting, today, weekdayLabel } from '@/lib/dates'
 import { activeStreak, contactOverdue, isScheduled, rankOf, streak, taskBucket } from '@/lib/game'
 import { daysToBirthday } from '@/lib/people'
+import { useInstall } from '@/stores/install'
 import { titleOf } from '@/lib/itemView'
 import { attrOf, MOODS, type Task } from '@/lib/types'
 import Avatar from '@/components/Avatar.vue'
@@ -14,6 +15,7 @@ import XpBar from '@/components/XpBar.vue'
 import TaskRow from '@/components/TaskRow.vue'
 
 const data = useData()
+const router = useRouter()
 const ui = useUi()
 const t = today()
 const d = fromKey(t)
@@ -91,6 +93,30 @@ const steps = computed(() => [
 ])
 const onboarding = computed(() => steps.value.some((s) => !s.done))
 
+// ---- install nudge (phones only, until installed or dismissed) ----
+const inst = useInstall()
+const nudgeKey = 'ngnl-install-nudge'
+const nudgeHidden = ref((() => {
+  try {
+    return localStorage.getItem(nudgeKey) === '1'
+  } catch {
+    return false
+  }
+})())
+const showNudge = computed(
+  () => !nudgeHidden.value && matchMedia('(max-width: 760px)').matches && ['prompt', 'ios-safari', 'in-app', 'ios-other'].includes(inst.platform),
+)
+function hideNudge() {
+  nudgeHidden.value = true
+  try {
+    localStorage.setItem(nudgeKey, '1')
+  } catch {}
+}
+async function nudgeAction() {
+  if (inst.platform === 'prompt' && (await inst.install())) return
+  router.push('/settings#install')
+}
+
 // ---- backup reminder: data lives only in this browser ----
 const daysSince = (iso?: string) => (iso ? (Date.now() - Date.parse(iso)) / 86400000 : Infinity)
 const needBackup = computed(() => {
@@ -146,6 +172,16 @@ const needBackup = computed(() => {
         </div>
       </div>
     </header>
+
+    <section v-if="showNudge" class="card nudge">
+      <Smartphone :size="20" />
+      <div class="grow">
+        <b>装到主屏幕，像 App 一样用</b>
+        <div class="muted">{{ inst.platform === 'prompt' ? '一键安装，全屏打开，断网也能用。' : '两步就好，全屏打开，断网也能用。' }}</div>
+      </div>
+      <button class="btn primary sm" @click="nudgeAction">{{ inst.platform === 'prompt' ? '安装' : '怎么装' }}</button>
+      <button class="btn ghost sm icon" aria-label="不再提示" @click="hideNudge"><X /></button>
+    </section>
 
     <section v-if="needBackup" class="card backup">
       <HardDriveDownload :size="20" />
@@ -294,6 +330,18 @@ const needBackup = computed(() => {
 }
 .col > * {
   min-width: 0;
+}
+.nudge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  color: var(--gold);
+  background: linear-gradient(135deg, var(--gold-soft), var(--surface) 75%);
+}
+.nudge b {
+  color: var(--text);
 }
 .backup {
   display: flex;

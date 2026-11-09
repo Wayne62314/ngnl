@@ -14,7 +14,9 @@ export const router = createRouter({
     { path: '/settings', component: () => import('./views/SettingsView.vue'), meta: { title: '设置' } },
     { path: '/:rest(.*)*', redirect: '/' },
   ],
-  scrollBehavior: () => ({ top: 0 }),
+  // Links like /settings#install scroll to that section (after the page transition).
+  scrollBehavior: (to) =>
+    to.hash ? new Promise((resolve) => setTimeout(() => resolve({ el: to.hash, top: 16, behavior: 'smooth' }), 260)) : { top: 0 },
 })
 
 router.afterEach((to) => {

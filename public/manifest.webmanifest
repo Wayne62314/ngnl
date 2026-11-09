@@ -1,11 +1,13 @@
 {
   "name": "NoGameNoLife · 人生面板",
-  "short_name": "NoGameNoLife",
+  "short_name": "人生面板",
   "description": "把人生做成一张 RPG 角色面板。数据只保存在你自己的设备上。",
   "lang": "zh-CN",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "id": "./",
+  "orientation": "any",
   "background_color": "#111017",
   "theme_color": "#1d1b26",
   "icons": [

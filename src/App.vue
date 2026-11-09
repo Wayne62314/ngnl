@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
-import { BookOpenText, CalendarDays, History, Lightbulb, Network, Repeat, Search, Settings, Swords, UserRound, Users, Cloud, CloudOff, RefreshCw } from 'lucide-vue-next'
+import { BookOpenText, CalendarDays, History, Lightbulb, Network, Repeat, Search, Settings, Swords, UserRound, Users, Cloud, CloudOff, RefreshCw, Download } from 'lucide-vue-next'
 import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
 import { useMcp } from '@/stores/mcp'
 import { useSync } from '@/stores/sync'
+import { useInstall } from '@/stores/install'
 import Avatar from '@/components/Avatar.vue'
 import XpBar from '@/components/XpBar.vue'
 import ItemDrawer from '@/components/ItemDrawer.vue'
@@ -17,6 +18,7 @@ import LevelUp from '@/components/LevelUp.vue'
 const data = useData()
 const ui = useUi()
 const sync = useSync()
+const inst = useInstall()
 
 const nav = [
   { to: '/', label: '今日', icon: CalendarDays },
@@ -81,6 +83,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </nav>
 
       <div class="side-foot">
+        <button v-if="inst.platform === 'prompt'" class="install" @click="inst.install()">
+          <Download :size="15" />安装为应用
+        </button>
         <RouterLink v-if="sync.enabled" to="/settings" class="sync-pill" :class="sync.state" :title="sync.error || '多设备同步'">
           <component :is="sync.state === 'offline' || sync.state === 'error' ? CloudOff : sync.state === 'syncing' ? RefreshCw : Cloud" :size="14" />
           {{ { idle: '已同步', syncing: '同步中…', offline: '离线 · 稍后同步', error: '同步出错', off: '' }[sync.state] }}
@@ -239,6 +244,25 @@ kbd {
 }
 .nav-item.router-link-exact-active svg {
   color: var(--gold);
+}
+.install {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 8px);
+  margin: 0 4px 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--gold) 55%, transparent);
+  background: var(--gold-soft);
+  color: var(--gold);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.install:hover {
+  border-style: solid;
 }
 .sync-pill {
   display: flex;
