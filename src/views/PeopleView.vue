@@ -5,7 +5,7 @@ import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
 import { friendly, today } from '@/lib/dates'
 import { contactOverdue, lastContact } from '@/lib/game'
-import { contactsLast30, daysToBirthday, GROUPS, groupMeta, groupOf, type Group } from '@/lib/people'
+import { contactsLast30, daysToBirthday, GROUPS, groupMeta, groupOf, type Group, statusLabel } from '@/lib/people'
 import { titleOf } from '@/lib/itemView'
 import type { Person } from '@/lib/types'
 import Avatar from '@/components/Avatar.vue'
@@ -19,6 +19,7 @@ const t = today()
 
 // ---- who needs attention, most urgent first ----
 const attention = (p: Person) => {
+  if (p.status) return p.status === 'gone' ? -1 : -2
   const b = daysToBirthday(p, t)
   const o = contactOverdue(p, t)
   if (b !== null && b <= 7) return 1000 - b
@@ -144,6 +145,7 @@ const listed = computed(() => {
   )
 })
 function statusOf(p: Person): { text: string; cls: string } {
+  if (p.status) return { text: statusLabel(p)!, cls: 'away' }
   const b = daysToBirthday(p, t)
   if (b === 0) return { text: '今天生日', cls: 'gold' }
   if (b !== null && b <= 7) return { text: `${b} 天后生日`, cls: 'gold' }
@@ -231,9 +233,9 @@ async function add() {
               v-for="n in nodes.values()"
               :key="n.p.id"
               class="pnode"
-              :class="[dim(n.p.id), { sel: n.p.id === focusId, due: contactOverdue(n.p, t) !== null }]"
+              :class="[dim(n.p.id), { sel: n.p.id === focusId, due: contactOverdue(n.p, t) !== null, away: n.p.status }]"
               :style="{ left: `${(n.x / S) * 100}%`, top: `${(n.y / S) * 100}%`, '--g': n.color, '--d': n.r * 2 }"
-              :title="titleOf(n.p)"
+              :title="n.p.status ? `${titleOf(n.p)}（${statusLabel(n.p)}）` : titleOf(n.p)"
               @click="select(n.p.id, true)"
               @dblclick="ui.open(n.p.id)"
             >
@@ -249,6 +251,7 @@ async function add() {
             <span><i class="lg-ring" />内圈 = 亲密度高</span>
             <span><i class="lg-tie" />互相认识</span>
             <span><i class="lg-due" />该联系了</span>
+            <span v-if="data.people.some((p) => p.status)"><i class="lg-away" />灰色 = 已离开或已故</span>
           </div>
         </div>
 
@@ -296,6 +299,21 @@ async function add() {
 </template>
 
 <style scoped>
+.pnode.away .bubble {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+.pnode.away .pname {
+  opacity: 0.6;
+}
+.lg-away {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-3);
+  opacity: 0.6;
+}
 .wide {
   max-width: 1280px;
 }

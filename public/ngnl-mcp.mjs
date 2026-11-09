@@ -68,7 +68,7 @@ const TOOLS = [
   },
   {
     name: 'list_people',
-    description: '人物：关系、亲密度(1-5)、生日与倒数、怎么认识的、印象、上次联系、是否该联系了、最近的往来记录（含备注）、认识的人。',
+    description: '人物：关系、是否已离开或已故、亲密度(1-5)、生日与倒数、怎么认识的、印象、上次联系、是否该联系了、最近的往来记录（含备注）、认识的人。',
     inputSchema: { type: 'object', properties: { recentContacts: { type: 'number', description: '每人返回最近几条往来记录，默认 5' } } },
     annotations: { readOnlyHint: true },
   },
@@ -93,7 +93,7 @@ const TOOLS = [
   {
     name: 'create_item',
     description:
-      '新建条目。常用字段：task {title, attr, difficulty 1|2|3, due ' + DATE + ', goalId, notes}；habit {title, attr, days [0-6, 0=周日]}；goal {title, status unknown|todo|doing|done, parentId}；person {title 名字, relation, closeness 1-5, birthday MM-DD 或 YYYY-MM-DD, met, traits}；event {title, date, kind event|milestone|decision, notes}；note {title, kind idea|intel, notes, tags}；' +
+      '新建条目。常用字段：task {title, attr, difficulty 1|2|3, due ' + DATE + ', goalId, notes}；habit {title, attr, days [0-6, 0=周日]}；goal {title, status unknown|todo|doing|done, parentId}；person {title 名字, relation, closeness 1-5, birthday MM-DD 或 YYYY-MM-DD, met, traits, status gone 已离开|deceased 已故（不再提醒）, statusDate}；event {title, date, kind event|milestone|decision, notes}；note {title, kind idea|intel, notes, tags}；' +
       'asset {title, category item|cred|fame|finance|debt, status owned|wanted|lost|sold, value 元, saved 元(想要的东西已经攒了多少), acquired ' + DATE + '}；' +
       'ledger {title, flow income|expense, amount 元, repeat none|week|month|year, date ' + DATE + ' 首次日期, until, category}；' +
       'segment {title, lane home|work|love|health|money 或自定义轨道, start ' + DATE + ', end}。',

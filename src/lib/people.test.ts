@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { contactLog, daysToBirthday, groupOf, nextBirthday, parseBirthday, turningAge } from './people'
+import { contactLog, daysToBirthday, groupOf, nextBirthday, parseBirthday, statusLabel, turningAge } from './people'
+import { contactOverdue } from './game'
 import type { Person } from './types'
 
 const person = (x: Partial<Person>): Person => ({ id: 'p', type: 'person', title: 'A', closeness: 3, createdAt: '2026-01-01T00:00:00Z', updatedAt: '', ...x })
@@ -40,5 +41,18 @@ describe('people', () => {
       { date: '2026-11-08', note: '吃饭' },
       { date: '2026-11-01', note: '' },
     ])
+  })
+
+  it('stops reminding about people who are gone or have died', () => {
+    const p = person({ closeness: 5, birthday: '11-20', contacts: ['2026-01-02'] })
+    expect(contactOverdue(p, '2026-11-09')).not.toBeNull()
+    expect(daysToBirthday(p, '2026-11-09')).toBe(11)
+    for (const status of ['gone', 'deceased'] as const) {
+      expect(contactOverdue({ ...p, status }, '2026-11-09')).toBeNull()
+      expect(daysToBirthday({ ...p, status }, '2026-11-09')).toBeNull()
+    }
+    expect(statusLabel({ status: 'deceased', statusDate: '2026-08-18' })).toBe('已故 · 2026年8月18日')
+    expect(statusLabel({ status: 'gone' })).toBe('已离开')
+    expect(statusLabel({})).toBeUndefined()
   })
 })

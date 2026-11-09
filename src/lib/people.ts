@@ -50,8 +50,9 @@ export function nextBirthday(p: Pick<Person, 'birthday'>, today: string): string
   }
 }
 
-/** Days until the next birthday (0 = today), or null if no birthday is set. */
-export function daysToBirthday(p: Pick<Person, 'birthday'>, today: string): number | null {
+/** Days until the next birthday (0 = today), or null if no birthday is set or they're no longer around. */
+export function daysToBirthday(p: Pick<Person, 'birthday'> & { status?: Person['status'] }, today: string): number | null {
+  if (p.status) return null
   const n = nextBirthday(p, today)
   return n ? diffDays(today, n) : null
 }
@@ -61,6 +62,16 @@ export function turningAge(p: Pick<Person, 'birthday'>, today: string): number |
   const b = parseBirthday(p.birthday)
   const n = nextBirthday(p, today)
   return b?.y && n ? fromKey(n).getFullYear() - b.y : undefined
+}
+
+export const PERSON_STATUS = {
+  gone: { label: '已离开', hint: '断了联系，或者不想再联系' },
+  deceased: { label: '已故', hint: '已经离开人世' },
+} as const
+/** "已故 · 2026年8月18日" / "已离开". */
+export function statusLabel(p: Pick<Person, 'status' | 'statusDate'>): string | undefined {
+  if (!p.status) return undefined
+  return PERSON_STATUS[p.status].label + (p.statusDate ? ` · ${p.statusDate.replace(/^(\d+)-0?(\d+)-0?(\d+)$/, '$1年$2月$3日')}` : '')
 }
 
 export function birthdayLabel(b?: string): string {

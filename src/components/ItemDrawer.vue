@@ -6,7 +6,7 @@ import { useUi } from '@/stores/ui'
 import { friendly, today, addDays, weekdayLabel } from '@/lib/dates'
 import { bestStreak, contactOverdue, CONTACT_INTERVAL, goalProgress, isLocked, lastContact, streak, TASK_XP } from '@/lib/game'
 import { itemIcon, titleOf } from '@/lib/itemView'
-import { parseBirthday } from '@/lib/people'
+import { parseBirthday, statusLabel } from '@/lib/people'
 import { typeLabel, type Goal, type Habit, type Item, type LifeEvent, type Note, type Person, type Segment, type Task, type Asset, type LedgerEntry } from '@/lib/types'
 import Seg from './Seg.vue'
 import AttrPick from './AttrPick.vue'
@@ -485,11 +485,31 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               <input class="input" :value="val('met')" placeholder="例如：2019 年大学社团" @input="(e) => text('met', (e.target as HTMLInputElement).value)" />
             </div>
           </div>
-          <div class="contact card-in">
+          <div class="field">
+            <label>现在</label>
+            <Seg
+              :model-value="person.status ?? ''"
+              :options="[
+                { value: '', label: '还在我的生活里' },
+                { value: 'gone', label: '已离开' },
+                { value: 'deceased', label: '已故' },
+              ]"
+              @update:model-value="(v) => set({ status: v || null, ...(v ? {} : { statusDate: null }) })"
+            />
+            <div v-if="person.status" class="status-row">
+              <input type="date" class="input" :value="person.statusDate ?? ''" :max="today()" @change="(e) => set({ statusDate: (e.target as HTMLInputElement).value || null })" />
+              <span class="faint small">{{ person.status === 'deceased' ? '哪天走的（可选）' : '从什么时候起（可选）' }}。不会再提醒联系和生日，往来记录都保留。</span>
+            </div>
+          </div>
+          <div v-if="person.status === 'deceased'" class="contact card-in faint small">
+            {{ statusLabel(person) }}。共留下 {{ new Set(person.contacts ?? []).size }} 次往来。
+          </div>
+          <div v-else class="contact card-in">
             <div class="grow">
               <div>上次联系：<b>{{ lastContact(person) ? friendly(lastContact(person)!) : '还没记录' }}</b></div>
               <div class="faint small">
-                <template v-if="CONTACT_INTERVAL[person.closeness]">建议每 {{ CONTACT_INTERVAL[person.closeness] }} 天联系一次</template>
+                <template v-if="person.status">已离开，不做提醒</template>
+                <template v-else-if="CONTACT_INTERVAL[person.closeness]">建议每 {{ CONTACT_INTERVAL[person.closeness] }} 天联系一次</template>
                 <template v-else>亲密度 1 不做提醒</template>
                 <template v-if="contactOverdue(person, today()) !== null"> · <span class="warn-text">该联系了</span></template>
               </div>
@@ -498,7 +518,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               {{ person.contacts?.includes(today()) ? '今天已联系 ✓' : '今天联系过' }}
             </button>
           </div>
-          <div v-if="person.contacts?.length" class="faint small">共联系 {{ new Set(person.contacts).size }} 次。往来记录和备注在「人物」页查看。</div>
+          <div v-if="person.contacts?.length && person.status !== 'deceased'" class="faint small">共联系 {{ new Set(person.contacts).size }} 次。往来记录和备注在「人物」页查看。</div>
         </template>
 
         <!-- ASSET -->
@@ -984,5 +1004,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .drawer-enter-from,
 .drawer-leave-to {
   transform: translateX(100%);
+}
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.status-row .input {
+  width: auto;
 }
 </style>

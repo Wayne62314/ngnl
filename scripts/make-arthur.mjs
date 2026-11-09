@@ -99,7 +99,7 @@ const fCaliber = field('口径', 'text')
 const fBond = field('亲密等级', 'number', { unit: '级' })
 const fLoyal = field('对达奇忠诚', 'select', { options: ['死忠', '动摇', '已经离心'] })
 const fWho = field('谁送的', 'item')
-const fAlive = field('还活着', 'bool')
+const fOwes = field('欠我人情', 'bool')
 
 // ---------------------------------------------------------------- goals (愿景树)
 const goal = (title, status, parent, created = START, x = {}) => item('goal', created, { title, status, ...(parent ? { parentId: parent.id } : {}), ...x })
@@ -139,7 +139,7 @@ const gHealth = goal('别让身体先垮掉', 'doing', null, '2026-04-10')
 const P = (title, relation, closeness, x = {}) => item('person', x.since ?? START, { title, relation, closeness, ...x })
 const people = [
   P('达奇', '帮派首领 · 带我长大的人', 4, { met: '十四岁那年，达奇和霍西亚把我从街上捡回来', traits: '会讲道理，越来越听不进道理', birthday: '1982-05-21', fields: { [fLoyal.id]: '动摇' } }),
-  P('霍西亚', '帮派元老 · 老师', 5, { met: '和达奇一起收留了我', traits: '聪明、温和，是帮里真正的大脑', fields: { [fAlive.id]: false } }),
+  P('霍西亚', '帮派元老 · 老师', 5, { met: '和达奇一起收留了我', traits: '聪明、温和，是帮里真正的大脑', fields: {} }),
   P('约翰', '帮派兄弟', 4, { met: '他十二岁被达奇带回来，我看着他长大', traits: '冲动，但心不坏。脸上有狼抓的疤', birthday: '2000-04-05' }),
   P('阿比盖尔', '约翰的妻子', 4, { met: '营地里一起熬过很多年', traits: '比约翰清醒，嘴硬心软' }),
   P('杰克', '约翰的儿子', 5, { met: '他出生时我就在营地', traits: '爱听故事，喜欢书', birthday: '2022-05-12' }),
@@ -148,33 +148,33 @@ const people = [
   P('哈维尔', '帮派兄弟', 3, { traits: '会弹吉他，对达奇言听计从', fields: { [fLoyal.id]: '死忠' } }),
   P('比尔', '帮派兄弟', 2, { traits: '不聪明，但够忠心', fields: { [fLoyal.id]: '死忠' } }),
   P('米卡', '新入伙的人', 1, { since: '2025-06-01', met: '去年才入伙', traits: '嘴甜心黑，一直在达奇耳边说话', fields: { [fDanger.id]: 9, [fLoyal.id]: '死忠' } }),
-  P('莱尼', '帮派兄弟', 4, { met: '他入伙时我还不太看得上他', traits: '读过书，年轻有冲劲', fields: { [fAlive.id]: false } }),
-  P('肖恩', '帮派兄弟', 3, { met: '在科尔特的赏金猎人手里救出来', traits: '嘴碎，爱吹牛，挺讨人喜欢', fields: { [fAlive.id]: false } }),
-  P('基兰', '被俘后入伙', 2, { since: '2026-01-15', met: '科尔特抓来的奥德里斯科尔小子', traits: '胆小，会照顾马', fields: { [fAlive.id]: false } }),
+  P('莱尼', '帮派兄弟', 4, { met: '他入伙时我还不太看得上他', traits: '读过书，年轻有冲劲', fields: {} }),
+  P('肖恩', '帮派兄弟', 3, { met: '在科尔特的赏金猎人手里救出来', traits: '嘴碎，爱吹牛，挺讨人喜欢', fields: {} }),
+  P('基兰', '被俘后入伙', 2, { since: '2026-01-15', met: '科尔特抓来的奥德里斯科尔小子', traits: '胆小，会照顾马', fields: {} }),
   P('大叔', '营地老人', 2, { traits: '腰永远在疼，活永远没干' }),
   P('皮尔森', '营地厨子', 3, { traits: '总在做炖菜，总说当年在海军' }),
   P('施特劳斯', '营地放贷人', 1, { traits: '让我去收债的人。是他害了唐斯一家', fields: { [fLoyal.id]: '死忠' } }),
   P('斯旺森牧师', '营地牧师', 3, { traits: '酒鬼，但心是好的' }),
-  P('莫莉', '达奇的女人', 2, { traits: '觉得达奇不再看她了', fields: { [fAlive.id]: false } }),
+  P('莫莉', '达奇的女人', 2, { traits: '觉得达奇不再看她了', fields: {} }),
   P('格里姆肖小姐', '营地管事', 3, { traits: '凶，营地全靠她管着' }),
   P('凯伦', '营地姑娘', 3, { traits: '胆子大，爱喝酒' }),
   P('蒂莉', '营地姑娘', 3, { traits: '聪明，吃过很多苦' }),
   P('玛丽-贝丝', '营地姑娘', 3, { traits: '爱看小说，想写书' }),
   P('特劳尼', '老朋友 · 骗子', 3, { traits: '魔术师兼骗子，出入上流社会' }),
   P('玛丽·林顿', '以前的恋人', 3, { met: '年轻时爱过的人。她选了别的路', traits: '她的家人从来看不起我' }),
-  P('伊丽莎', '儿子的母亲', 2, { met: '年轻时在一家小馆子认识', traits: '温柔', fields: { [fAlive.id]: false } }),
-  P('艾萨克', '儿子', 5, { traits: '我很少去看他。后来再也看不到了', fields: { [fAlive.id]: false } }),
+  P('伊丽莎', '儿子的母亲', 2, { met: '年轻时在一家小馆子认识', traits: '温柔', fields: {} }),
+  P('艾萨克', '儿子', 5, { traits: '我很少去看他。后来再也看不到了', fields: {} }),
   P('卡尔德隆修女', '修女', 3, { since: '2026-07-12', met: '在圣丹尼斯的路边', traits: '相信我心里还有好的东西' }),
   P('雨落', '瓦皮蒂族长', 3, { since: '2026-09-28', traits: '为族人忍了太久' }),
-  P('鹰飞', '雨落的儿子', 3, { since: '2026-09-28', traits: '年轻，想打仗', fields: { [fAlive.id]: true } }),
-  P('哈米什', '独腿老猎人', 3, { since: '2026-10-10', met: '在山里帮他找回马', traits: '比我乐观得多', fields: { [fAlive.id]: false } }),
+  P('鹰飞', '雨落的儿子', 3, { since: '2026-09-28', traits: '年轻，想打仗', fields: {} }),
+  P('哈米什', '独腿老猎人', 3, { since: '2026-10-10', met: '在山里帮他找回马', traits: '比我乐观得多', fields: {} }),
   P('夏洛特', '寡妇', 3, { since: '2026-10-08', met: '她丈夫死后不会打猎，快饿死了', traits: '学得很快' }),
-  P('托马斯·唐斯', '欠债的农夫', 1, { since: BITTEN, met: '去收债时把他打了。他咳在我脸上', traits: '他已经病得很重了', fields: { [fAlive.id]: false } }),
+  P('托马斯·唐斯', '欠债的农夫', 1, { since: BITTEN, met: '去收债时把他打了。他咳在我脸上', traits: '他已经病得很重了', fields: {} }),
   P('埃德娜·唐斯', '托马斯的妻子', 2, { since: BITTEN, traits: '丈夫死后带着儿子讨生活' }),
   P('阿奇·唐斯', '托马斯的儿子', 2, { since: BITTEN, traits: '还是个孩子，就得去矿上干活' }),
-  P('科尔姆·奥德里斯科尔', '仇人', 1, { met: '和达奇斗了十几年的帮派头目', traits: '杀了达奇的女人，达奇也杀了他弟弟', fields: { [fBounty.id]: 1500, [fDanger.id]: 8, [fAlive.id]: false } }),
+  P('科尔姆·奥德里斯科尔', '仇人', 1, { met: '和达奇斗了十几年的帮派头目', traits: '杀了达奇的女人，达奇也杀了他弟弟', fields: { [fBounty.id]: 1500, [fDanger.id]: 8 } }),
   P('康沃尔', '石油大亨 · 仇人', 1, { since: '2026-03-20', met: '我们抢了他的火车', traits: '有钱，有平克顿，记仇', fields: { [fDanger.id]: 7 } }),
-  P('布隆特', '圣丹尼斯黑帮', 1, { since: '2026-07-01', met: '他绑走了杰克', traits: '笑着做最脏的事', fields: { [fDanger.id]: 8, [fAlive.id]: false } }),
+  P('布隆特', '圣丹尼斯黑帮', 1, { since: '2026-07-01', met: '他绑走了杰克', traits: '笑着做最脏的事', fields: { [fDanger.id]: 8 } }),
   P('米尔顿探员', '平克顿', 1, { since: '2026-03-25', met: '在营地外找上我', traits: '冷静，知道得太多', fields: { [fDanger.id]: 9 } }),
   P('罗斯探员', '平克顿', 1, { since: '2026-03-25', traits: '米尔顿的搭档', fields: { [fDanger.id]: 8 } }),
   P('老伙计', '我的马', 5, { since: '2026-02-21', met: '在瓦伦丁的马厩买的', traits: '比大多数人可靠', fields: { [fBond.id]: 4 } }),
@@ -194,6 +194,12 @@ const DEATH = {
   艾萨克: '2016-08-01',
 }
 const GONE = { 施特劳斯: '2026-10-18' } // left the camp — no more contact
+for (const p of people) {
+  if (DEATH[p.title]) Object.assign(p, { status: 'deceased', statusDate: DEATH[p.title] })
+  else if (GONE[p.title]) Object.assign(p, { status: 'gone', statusDate: GONE[p.title] })
+}
+// Who owes Arthur a favour.
+for (const t of ['特劳尼', '夏洛特', '卡尔德隆修女', '埃德娜·唐斯']) by[t].fields = { ...(by[t].fields ?? {}), [fOwes.id]: true }
 const knows = [
   ['达奇', '霍西亚'], ['达奇', '约翰'], ['达奇', '米卡'], ['达奇', '莫莉'], ['达奇', '哈维尔'], ['达奇', '比尔'], ['达奇', '施特劳斯'], ['达奇', '科尔姆·奥德里斯科尔'],
   ['约翰', '阿比盖尔'], ['约翰', '杰克'], ['阿比盖尔', '杰克'], ['约翰', '查尔斯'], ['约翰', '莎迪'], ['约翰', '哈维尔'], ['约翰', '比尔'],

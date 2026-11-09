@@ -18,7 +18,7 @@ import {
   streak,
   taskBucket,
 } from './game'
-import { contactLog, daysToBirthday } from './people'
+import { contactLog, daysToBirthday, statusLabel } from './people'
 import { search as searchItems, titleOf } from './itemView'
 import { PRESETS } from './portraits'
 import { ATTRS, MOODS, type FieldDef, type Goal, type Item, type ItemType, type Person, type Sim, type SimEdge, type SimNode, type Task } from './types'
@@ -73,11 +73,12 @@ function need(data: Data, id: unknown, type?: ItemType): Item {
 /** Light validation so a confused model can't write nonsense into the user's data. */
 function checkFields(type: ItemType, f: Args) {
   if ('attr' in f && f.attr !== null && !ATTRS.some((a) => a.key === f.attr)) throw new Error('attr 只能是 mind/body/craft/social/career/spirit')
-  for (const k of ['due', 'date', 'doneAt', 'start', 'end', 'until', 'acquired']) if (k in f && f[k] !== null && !isDate(f[k])) throw new Error(`${k} 需要 YYYY-MM-DD 格式`)
+  for (const k of ['due', 'date', 'doneAt', 'start', 'end', 'until', 'acquired', 'statusDate']) if (k in f && f[k] !== null && !isDate(f[k])) throw new Error(`${k} 需要 YYYY-MM-DD 格式`)
   if (type === 'task' && 'difficulty' in f && ![1, 2, 3].includes(f.difficulty as number)) throw new Error('difficulty 只能是 1、2、3')
   if (type === 'task' && 'status' in f && !['todo', 'doing', 'done', 'dropped'].includes(f.status as string)) throw new Error('任务 status 只能是 todo/doing/done/dropped')
   if (type === 'goal' && 'status' in f && !['unknown', 'todo', 'doing', 'done'].includes(f.status as string)) throw new Error('目标 status 只能是 unknown/todo/doing/done')
   if (type === 'person' && 'closeness' in f && ![1, 2, 3, 4, 5].includes(f.closeness as number)) throw new Error('closeness 只能是 1-5')
+  if (type === 'person' && 'status' in f && f.status !== null && !['gone', 'deceased'].includes(f.status as string)) throw new Error('人物 status 只能是 gone（已离开）/ deceased（已故），或 null（还在生活里）')
   if (type === 'person' && 'birthday' in f && f.birthday !== null && !/^(\d{4}-)?\d{2}-\d{2}$/.test(String(f.birthday))) throw new Error('birthday 需要 MM-DD 或 YYYY-MM-DD')
   if (type === 'habit' && 'days' in f && !(Array.isArray(f.days) && f.days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6))) throw new Error('days 是 0-6 的数组，0=周日')
   if (type === 'asset' && 'category' in f && !['item', 'cred', 'fame', 'finance', 'debt'].includes(f.category as string)) throw new Error('资产 category 只能是 item/cred/fame/finance/debt')
@@ -269,6 +270,7 @@ export function runTool(data: Data, name: string, a: Args): unknown {
           id: p.id,
           name: titleOf(p),
           relation: p.relation,
+          status: p.status ? statusLabel(p) : undefined,
           closeness: p.closeness,
           birthday: p.birthday,
           daysToBirthday: daysToBirthday(p, d) ?? undefined,

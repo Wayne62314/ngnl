@@ -173,6 +173,7 @@ export const lastContact = (p: Person) => (p.contacts?.length ? [...p.contacts].
 
 /** Days overdue for contact, or null if not due. People never contacted count from when they were added. */
 export function contactOverdue(p: Person, today: string): number | null {
+  if (p.status) return null
   const interval = CONTACT_INTERVAL[p.closeness] ?? 0
   if (!interval) return null
   const since = lastContact(p) ?? p.createdAt.slice(0, 10)

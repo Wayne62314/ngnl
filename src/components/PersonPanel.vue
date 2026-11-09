@@ -5,7 +5,7 @@ import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
 import { friendly, today } from '@/lib/dates'
 import { CONTACT_INTERVAL, contactOverdue, lastContact } from '@/lib/game'
-import { birthdayLabel, contactLog, daysToBirthday, groupMeta, groupOf, turningAge } from '@/lib/people'
+import { birthdayLabel, contactLog, daysToBirthday, groupMeta, groupOf, statusLabel, turningAge } from '@/lib/people'
 import { titleOf } from '@/lib/itemView'
 import type { Person } from '@/lib/types'
 import ItemPicker from './ItemPicker.vue'
@@ -70,13 +70,14 @@ const emit = defineEmits<{ select: [id: string] }>()
 </script>
 
 <template>
-  <div class="panel" :style="{ '--g': group.color }">
+  <div class="panel" :class="{ away: p.status }" :style="{ '--g': group.color }">
     <header class="head">
       <div class="bubble">{{ titleOf(p).slice(0, 1) }}</div>
       <div class="grow">
         <div class="name ellipsis">{{ titleOf(p) }}</div>
         <div class="sub">
           <span class="chip tag">{{ p.relation || group.label }}</span>
+          <span v-if="p.status" class="chip away-chip">{{ statusLabel(p) }}</span>
           <span class="hearts" role="radiogroup" aria-label="亲密度">
             <button v-for="n in 5" :key="n" :class="{ on: n <= p.closeness }" :title="`亲密度 ${n} / 5`" @click="data.update<Person>(p.id, { closeness: n })">♥</button>
           </span>
@@ -115,11 +116,13 @@ const emit = defineEmits<{ select: [id: string] }>()
         <span v-else-if="last" class="faint small">上次 {{ friendly(last) }}</span>
       </div>
       <div class="faint small hint">
-        <template v-if="CONTACT_INTERVAL[p.closeness]">按亲密度，建议每 {{ CONTACT_INTERVAL[p.closeness] }} 天联系一次。</template>
+        <template v-if="p.status === 'deceased'">往来记录会一直留着。</template>
+        <template v-else-if="p.status">已离开，不再提醒联系；真的又联系上了，照常记录就好。</template>
+        <template v-else-if="CONTACT_INTERVAL[p.closeness]">按亲密度，建议每 {{ CONTACT_INTERVAL[p.closeness] }} 天联系一次。</template>
         <template v-else>亲密度 1 不做提醒。</template>
-        每记录一次 +5 社交。
+        <template v-if="p.status !== 'deceased'">每记录一次 +5 社交。</template>
       </div>
-      <form class="record" @submit.prevent="record">
+      <form v-if="p.status !== 'deceased'" class="record" @submit.prevent="record">
         <textarea v-model="note" class="textarea" rows="2" placeholder="聊了什么？见面还是消息？（可以不写）" @keydown.ctrl.enter="record" />
         <div class="row">
           <input v-model="date" type="date" class="input date" :max="t" />
@@ -172,6 +175,14 @@ const emit = defineEmits<{ select: [id: string] }>()
 </template>
 
 <style scoped>
+.away .bubble {
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+.away-chip {
+  background: var(--sunken);
+  color: var(--text-2);
+}
 .panel {
   display: grid;
   gap: 18px;

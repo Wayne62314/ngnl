@@ -68,6 +68,10 @@ export interface Person extends Base {
   birthday?: string
   /** How and when you met. */
   met?: string
+  /** No longer in your life: drifted apart / cut off ("gone"), or passed away. No reminders either way. */
+  status?: 'gone' | 'deceased'
+  /** When that happened (YYYY-MM-DD), if known. */
+  statusDate?: string
 }
 
 export type EventKind = 'event' | 'milestone' | 'decision'
