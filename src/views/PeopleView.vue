@@ -11,6 +11,7 @@ import type { Person } from '@/lib/types'
 import Avatar from '@/components/Avatar.vue'
 import Empty from '@/components/Empty.vue'
 import PersonPanel from '@/components/PersonPanel.vue'
+import LinkChips from '@/components/LinkChips.vue'
 
 const data = useData()
 const ui = useUi()
@@ -277,6 +278,7 @@ async function add() {
             <span class="grow info">
               <span class="ellipsis"><b>{{ titleOf(p) }}</b> <span class="faint">{{ p.relation }}</span></span>
               <span class="small ellipsis" :class="statusOf(p).cls">{{ statusOf(p).text }}</span>
+              <LinkChips :id="p.id" :max="2" :hide="['person']" class="plinks" />
             </span>
             <span class="hearts">{{ '♥'.repeat(p.closeness) }}</span>
           </button>
@@ -665,5 +667,8 @@ async function add() {
   .map-card {
     padding: 12px 8px 10px;
   }
+}
+.plinks {
+  margin-top: 4px;
 }
 </style>

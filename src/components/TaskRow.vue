@@ -8,6 +8,7 @@ import { isLocked } from '@/lib/game'
 import { titleOf } from '@/lib/itemView'
 import { attrOf, type Task } from '@/lib/types'
 import AttrTag from './AttrTag.vue'
+import LinkChips from './LinkChips.vue'
 
 const props = defineProps<{ task: Task; hideGoal?: boolean }>()
 const data = useData()
@@ -43,6 +44,7 @@ function toggle() {
       <div class="meta">
         <span v-if="task.due && task.due !== today()" class="chip" :class="{ warn: overdue }">{{ friendly(task.due) }}</span>
         <span v-if="goal && !hideGoal" class="chip"><Flag />{{ titleOf(goal) }}</span>
+        <LinkChips :id="task.id" :max="3" />
         <slot name="meta" />
       </div>
     </div>

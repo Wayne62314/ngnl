@@ -6,9 +6,10 @@ import { useUi } from '@/stores/ui'
 import { friendly, today } from '@/lib/dates'
 import { CONTACT_INTERVAL, contactOverdue, lastContact } from '@/lib/game'
 import { birthdayLabel, contactLog, daysToBirthday, groupMeta, groupOf, turningAge } from '@/lib/people'
-import { itemIcon, titleOf } from '@/lib/itemView'
-import { typeLabel, type Person } from '@/lib/types'
+import { titleOf } from '@/lib/itemView'
+import type { Person } from '@/lib/types'
 import ItemPicker from './ItemPicker.vue'
+import RelatedGroups from './RelatedGroups.vue'
 
 const props = defineProps<{ person: Person }>()
 const data = useData()
@@ -163,13 +164,7 @@ const emit = defineEmits<{ select: [id: string] }>()
 
     <section v-if="related.length" class="block">
       <div class="block-title">相关 <span class="faint">{{ related.length }}</span></div>
-      <div class="refs">
-        <div v-for="r in related" :key="r.id" class="ref" @click="ui.open(r.id)">
-          <component :is="itemIcon(r)" :size="14" class="faint" />
-          <span class="grow ellipsis">{{ titleOf(r) }}</span>
-          <span class="chip">{{ typeLabel(r) }}</span>
-        </div>
-      </div>
+      <RelatedGroups :id="p.id" :hide="['person']" />
     </section>
   </div>
 </template>

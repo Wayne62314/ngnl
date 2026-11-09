@@ -7,6 +7,7 @@ import { fromKey, today } from '@/lib/dates'
 import { titleOf } from '@/lib/itemView'
 import type { LifeEvent } from '@/lib/types'
 import Empty from '@/components/Empty.vue'
+import LinkChips from '@/components/LinkChips.vue'
 
 const data = useData()
 const ui = useUi()
@@ -64,7 +65,7 @@ async function add(kind: LifeEvent['kind'] = 'event') {
               </div>
               <p v-else-if="firstLine(e.notes)" class="muted ex">{{ firstLine(e.notes) }}</p>
               <div v-if="data.linked(e.id).length" class="links">
-                <span v-for="l in data.linked(e.id).slice(0, 4)" :key="l.id" class="chip">{{ titleOf(l) }}</span>
+                <LinkChips :id="e.id" :max="5" />
               </div>
             </div>
           </article>

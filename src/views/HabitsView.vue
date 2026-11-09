@@ -8,6 +8,7 @@ import { isScheduled, streak } from '@/lib/game'
 import { titleOf } from '@/lib/itemView'
 import { attrOf, type Habit } from '@/lib/types'
 import Empty from '@/components/Empty.vue'
+import LinkChips from '@/components/LinkChips.vue'
 
 const data = useData()
 const ui = useUi()
@@ -95,6 +96,7 @@ async function add() {
           <div class="grow">
             <div class="name ellipsis">{{ titleOf(h) }}</div>
             <div class="faint small">{{ daysText(h) }} · {{ attrOf(h.attr).label }}<template v-if="rate(h) !== null"> · 近四周完成 {{ rate(h) }}%</template></div>
+            <LinkChips :id="h.id" :max="3" class="hlinks" />
           </div>
           <div class="streak" :class="{ hot: streak(h, data.doneDates(h.id), t) > 0 }">
             <Flame :size="16" />
@@ -263,5 +265,8 @@ async function add() {
 }
 .paused {
   margin-top: 32px;
+}
+.hlinks {
+  margin-top: 6px;
 }
 </style>

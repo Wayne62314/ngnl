@@ -11,6 +11,7 @@ import { typeLabel, type Goal, type Habit, type Item, type LifeEvent, type Note,
 import Seg from './Seg.vue'
 import AttrPick from './AttrPick.vue'
 import ItemPicker from './ItemPicker.vue'
+import RelatedGroups from './RelatedGroups.vue'
 
 const data = useData()
 const ui = useUi()
@@ -569,12 +570,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <section class="links">
           <div class="label row"><Link2 :size="13" />关联 <span class="faint">{{ linked.length || '' }}</span></div>
           <div class="refs">
-            <div v-for="l in linked" :key="l.id" class="ref" @click="ui.open(l.id)">
-              <component :is="itemIcon(l)" :size="14" class="faint" />
-              <span class="grow ellipsis">{{ titleOf(l) }}</span>
-              <span class="chip">{{ typeLabel(l) }}</span>
-              <button class="btn ghost sm icon" title="取消关联" @click.stop="data.unlink(item.id, l.id)"><X /></button>
-            </div>
+            <RelatedGroups :id="item.id" :kinds="['link']" editable />
             <ItemPicker v-if="picking === 'link'" :exclude="[item.id, ...linked.map((l) => l.id)]" @pick="pickLink" @close="picking = null" />
             <button v-else class="btn sm ghost add" @click="picking = 'link'"><Plus />关联到人物、目标、灵感…</button>
           </div>

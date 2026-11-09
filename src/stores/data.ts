@@ -8,6 +8,8 @@ import { attrOf } from '@/lib/types'
 import type { Attr, Checkin, Goal, Habit, Item, ItemOf, ItemType, LifeEvent, Mood, Note, Person, Profile, Snapshot, Task } from '@/lib/types'
 import { useUi } from './ui'
 
+export type RelationKind = 'link' | 'goal' | 'task' | 'parent' | 'child' | 'prereq' | 'unlocks'
+
 type Patch<T extends Item> = { [K in keyof T]?: T[K] | null }
 
 const DEFAULTS: { [T in ItemType]: Partial<ItemOf<T>> } = {
@@ -50,6 +52,30 @@ export const useData = defineStore('data', () => {
   })
   const linked = (id: string) =>
     [...(linkMap.value.get(id) ?? [])].map((x) => byId.value.get(x)).filter((x): x is Item => !!x)
+
+  /**
+   * Everything an item is connected to: explicit links plus the structure the
+   * app already knows (a task's goal, a goal's tasks and sub-goals, prerequisites).
+   * `how` says why, so the UI can label it and only offer "unlink" for real links.
+   */
+  const related = (id: string): { item: Item; how: RelationKind }[] => {
+    const it = byId.value.get(id)
+    if (!it) return []
+    const out = new Map<string, { item: Item; how: RelationKind }>()
+    const add = (x: Item | undefined, how: RelationKind) => x && x.id !== id && !out.has(x.id) && out.set(x.id, { item: x, how })
+    for (const x of linked(id)) add(x, 'link')
+    if (it.type === 'task') {
+      add(it.goalId ? byId.value.get(it.goalId) : undefined, 'goal')
+      for (const p of it.prereqIds ?? []) add(byId.value.get(p), 'prereq')
+      for (const t of tasks.value) if (t.prereqIds?.includes(id)) add(t, 'unlocks')
+    }
+    if (it.type === 'goal') {
+      add(it.parentId ? byId.value.get(it.parentId) : undefined, 'parent')
+      for (const g of goals.value) if (g.parentId === id) add(g, 'child')
+      for (const t of tasks.value) if (t.goalId === id) add(t, 'task')
+    }
+    return [...out.values()]
+  }
 
   const checkinSets = computed(() => {
     const m = new Map<string, Set<string>>()
@@ -281,7 +307,7 @@ export const useData = defineStore('data', () => {
 
   return {
     items, links, checkins, moods, profile, loaded, loadError, meta, persisted,
-    byId, tasks, habits, goals, people, events, notes, linked, doneDates,
+    byId, tasks, habits, goals, people, events, notes, linked, related, doneDates,
     xp, totals, totalXp, level, moodOf,
     init, load, protect, exportBackup, snoozeBackup, create, update, remove, link, unlink, toggleCheckin, setMood, contact, logContact, removeContact, saveProfile, importSnapshot, wipe,
   }

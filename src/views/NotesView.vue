@@ -8,6 +8,7 @@ import { titleOf } from '@/lib/itemView'
 import type { IdeaStatus, Note } from '@/lib/types'
 import Seg from '@/components/Seg.vue'
 import Empty from '@/components/Empty.vue'
+import LinkChips from '@/components/LinkChips.vue'
 
 const data = useData()
 const ui = useUi()
@@ -85,7 +86,8 @@ async function add() {
             <article v-for="n in col(c.key)" :key="n.id" class="card idea" :class="c.key" @click="ui.open(n.id)">
               <b>{{ titleOf(n) }}</b>
               <p v-if="excerpt(n)" class="muted">{{ excerpt(n) }}</p>
-              <div class="faint small">{{ friendly(n.createdAt.slice(0, 10)) }}<template v-if="data.linked(n.id).length"> · {{ data.linked(n.id).length }} 个关联</template></div>
+              <div class="faint small">{{ friendly(n.createdAt.slice(0, 10)) }}</div>
+              <LinkChips :id="n.id" :max="3" />
             </article>
             <div v-if="!col(c.key).length" class="faint hint">{{ c.hint }}</div>
           </div>
@@ -115,6 +117,7 @@ async function add() {
           <div class="grow">
             <div class="ellipsis"><b>{{ titleOf(n) }}</b></div>
             <div class="faint small ellipsis">{{ excerpt(n) || host(n.source) || '—' }}</div>
+            <LinkChips :id="n.id" :max="3" class="intel-links" />
           </div>
           <span v-for="t in (n.tags ?? []).slice(0, 3)" :key="t" class="chip">#{{ t }}</span>
           <a v-if="/^https?:\/\//.test(n.source ?? '')" :href="n.source" target="_blank" rel="noopener" class="btn ghost sm icon" title="打开来源" @click.stop><ExternalLink /></a>
@@ -214,5 +217,11 @@ async function add() {
   .board {
     grid-template-columns: 1fr;
   }
+}
+.intel-links {
+  margin-top: 4px;
+}
+.idea :deep(.links) {
+  margin-top: 8px;
 }
 </style>

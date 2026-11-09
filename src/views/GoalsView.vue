@@ -4,7 +4,9 @@ import { ArrowRightToLine, Crown, Network, Plus } from 'lucide-vue-next'
 import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
 import { goalProgress } from '@/lib/game'
-import type { Goal } from '@/lib/types'
+import type { Goal, Item, Person } from '@/lib/types'
+import { titleOf } from '@/lib/itemView'
+import { tintOf } from '@/lib/itemTint'
 import Empty from '@/components/Empty.vue'
 
 const data = useData()
@@ -15,7 +17,7 @@ const wrap = ref<HTMLElement>()
 onMounted(() => nextTick(() => wrap.value && (wrap.value.scrollLeft = wrap.value.scrollWidth)))
 
 const W = 210
-const H = 74
+const H = 96
 const COL = W + 64
 const ROW = H + 16
 const TREE_GAP = 40
@@ -79,6 +81,17 @@ const edge = (n: Node) => {
   return `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`
 }
 
+/** Who and what a goal is tied to, summarised for its node: people as avatars, the rest as counts. */
+const TYPE_WORD: Record<string, string> = { person: '人', event: '段经历', note: '条灵感/情报', habit: '个习惯', task: '个任务', goal: '个目标' }
+function ties(id: string) {
+  const linked: Item[] = data.linked(id)
+  const people = linked.filter((x): x is Person => x.type === 'person')
+  const counts = new Map<string, number>()
+  for (const x of linked) counts.set(x.type, (counts.get(x.type) ?? 0) + 1)
+  const label = [...counts].map(([t, n]) => `${n} ${TYPE_WORD[t]}`).join(' · ')
+  return { people, count: linked.length, label }
+}
+
 const STATUS = {
   unknown: '还不清楚',
   todo: '未开始',
@@ -139,6 +152,12 @@ async function insertAbove(n: Node) {
             <span v-if="n.progress.total" class="num">{{ n.progress.done }}/{{ n.progress.total }}</span>
           </div>
           <div v-if="n.progress.total" class="np"><div :style="{ width: `${(n.progress.done / n.progress.total) * 100}%` }" /></div>
+          <div v-if="ties(n.g.id).count" class="ties" :title="ties(n.g.id).label">
+            <span class="avs">
+              <i v-for="p in ties(n.g.id).people.slice(0, 3)" :key="p.id" :style="{ background: tintOf(p) }">{{ titleOf(p).slice(0, 1) }}</i>
+            </span>
+            <span class="ellipsis">{{ ties(n.g.id).label }}</span>
+          </div>
 
           <button class="add left" title="添加通往它的一步" @click.stop="addStep(n)"><Plus :size="14" /></button>
           <button class="add right" title="在它之后插入一个更大的目标" @click.stop="insertAbove(n)"><ArrowRightToLine :size="13" /></button>
@@ -247,6 +266,35 @@ async function insertAbove(n: Node) {
 .np div {
   height: 100%;
   background: var(--gold);
+}
+.ties {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-3);
+  min-width: 0;
+}
+.avs {
+  display: flex;
+  flex: none;
+}
+.avs i {
+  width: 18px;
+  height: 18px;
+  margin-left: -5px;
+  border-radius: 50%;
+  border: 1.5px solid var(--surface);
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+}
+.avs i:first-child {
+  margin-left: 0;
 }
 .add {
   position: absolute;
