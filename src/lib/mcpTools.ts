@@ -50,6 +50,7 @@ export const TOOL_LABELS: Record<string, string> = {
   get_sim_guide: '查看推演节点说明',
   list_sims: '查看推演图',
   save_sim: '保存推演图',
+  suggest_links: '查看关联建议',
 }
 
 const TYPES: ItemType[] = ['task', 'habit', 'goal', 'person', 'event', 'note', 'asset', 'ledger', 'segment']
@@ -366,6 +367,20 @@ export function runTool(data: Data, name: string, a: Args): unknown {
           const it = need(data, id)
           return { ...ref(it), outputs: portsOf({ id: 'x', kind: 'item', x: 0, y: 0, data: { itemId: it.id } }, ctx).outputs.map(portText) }
         }),
+      }
+    }
+
+    case 'suggest_links': {
+      const list = a.id ? data.suggestions.filter((s) => s.from.id === a.id || s.to.id === a.id) : data.suggestions
+      const limit = Math.min(Math.max(Number(a.limit) || 30, 1), 200)
+      return {
+        total: list.length,
+        suggestions: list.slice(0, limit).map((s) => ({
+          a: ref(s.from),
+          b: ref(s.to),
+          why: `「${titleOf(s.from)}」的${s.where}提到了「${s.match}」：${s.before}${s.match}${s.after}`,
+        })),
+        hint: '这些是文字里提到、但还没关联的条目。和用户确认后可以用 link_items 连上。',
       }
     }
 

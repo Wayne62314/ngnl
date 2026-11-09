@@ -7,7 +7,7 @@ import { useData } from './data'
 const PORTS = [5311, 5312, 5313, 5314, 5315]
 const RETRY_MS = 4000
 /** Version of public/ngnl-mcp.mjs that has every tool this page can run. */
-const LATEST = '1.2.0'
+const LATEST = '1.3.0'
 
 export interface McpLogEntry {
   at: string

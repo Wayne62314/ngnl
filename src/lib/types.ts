@@ -199,6 +199,8 @@ export interface Profile {
   netWorth?: Record<string, number>
   /** Extra trajectory tracks the user added, in display order. */
   lanes?: string[]
+  /** Link suggestions the user said no to ("idA|idB", sorted). */
+  dismissedLinks?: string[]
 }
 
 export interface Snapshot {

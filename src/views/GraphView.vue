@@ -7,6 +7,7 @@ import { buildGraph, EDGE_LABEL, GRAPH_TYPES, hubs, layout, type GNode } from '@
 import { itemIcon, search, titleOf } from '@/lib/itemView'
 import { TYPE_META, typeLabel, type ItemType } from '@/lib/types'
 import RelatedGroups from '@/components/RelatedGroups.vue'
+import LinkSuggestions from '@/components/LinkSuggestions.vue'
 import Empty from '@/components/Empty.vue'
 
 const data = useData()
@@ -271,6 +272,7 @@ function up(e: PointerEvent) {
           </div>
           <button class="btn sm open" @click="ui.open(focusItem.id)"><ExternalLink :size="14" />打开详情</button>
           <RelatedGroups :id="focusItem.id" />
+          <LinkSuggestions :id="focusItem.id" />
         </template>
         <template v-else>
           <h2 class="section-title">连接最多的</h2>
@@ -284,6 +286,7 @@ function up(e: PointerEvent) {
             <div><i class="dash" />目标、子目标、前置（自动）</div>
           </div>
           <p class="tip">点一颗星看它连着什么；双击打开；滚轮缩放，拖动平移。</p>
+          <LinkSuggestions title="可能漏掉的连线" :limit="4" class="missing" />
         </template>
       </aside>
     </div>
@@ -592,6 +595,11 @@ function up(e: PointerEvent) {
 }
 .legend i.dash {
   border-top-style: dashed;
+}
+.missing {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 .tip {
   margin: 4px 0 0;

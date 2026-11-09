@@ -12,6 +12,7 @@ import Seg from './Seg.vue'
 import AttrPick from './AttrPick.vue'
 import ItemPicker from './ItemPicker.vue'
 import RelatedGroups from './RelatedGroups.vue'
+import LinkSuggestions from './LinkSuggestions.vue'
 import FieldsSection from './FieldsSection.vue'
 import FieldDefEditor from './FieldDefEditor.vue'
 import PlacePicker from './PlacePicker.vue'
@@ -749,6 +750,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <div class="label row"><Link2 :size="13" />关联 <span class="faint">{{ linked.length || '' }}</span></div>
           <div class="refs">
             <RelatedGroups :id="item.id" :kinds="['link']" editable />
+            <LinkSuggestions :id="item.id" class="sugg-in-drawer" />
             <ItemPicker v-if="picking === 'link'" :exclude="[item.id, ...linked.map((l) => l.id)]" @pick="pickLink" @close="picking = null" />
             <button v-else class="btn sm ghost add" @click="picking = 'link'"><Plus />关联到人物、目标、灵感…</button>
           </div>

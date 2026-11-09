@@ -14,7 +14,7 @@
 import { createServer } from 'node:http'
 import { createHash, randomUUID } from 'node:crypto'
 
-const VERSION = '1.2.0'
+const VERSION = '1.3.0'
 const PORTS = [5311, 5312, 5313, 5314, 5315]
 const ORIGINS = new Set([
   'https://wayne62314.github.io',
@@ -172,6 +172,12 @@ const TOOLS = [
       },
       required: ['title', 'nodes', 'edges'],
     },
+  },
+  {
+    name: 'suggest_links',
+    description: '关联建议：哪些条目的文字（标题、备注、往来记录…）提到了另一个条目的名字，但两者还没关联。可以传 id 只看和某个条目有关的。和用户确认后用 link_items 连上。',
+    inputSchema: { type: 'object', properties: { id: str('只看这个条目，可选'), limit: { type: 'number', description: '默认 30' } } },
+    annotations: { readOnlyHint: true },
   },
   {
     name: 'set_mood',

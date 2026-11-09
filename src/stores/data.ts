@@ -5,6 +5,7 @@ import { isPersisted, onExternalChange, patchMeta, readMeta, requestPersistence,
 import { today } from '@/lib/dates'
 import { attrLevel, attrTotals, characterLevel, rankOf, xpEntries } from '@/lib/game'
 import { attrOf } from '@/lib/types'
+import { pairKey, suggestLinks } from '@/lib/suggest'
 import type { Attr, Checkin, Goal, Habit, Item, ItemOf, ItemType, LifeEvent, Mood, Note, Person, Profile, Snapshot, Task } from '@/lib/types'
 import { useUi } from './ui'
 
@@ -86,6 +87,9 @@ export const useData = defineStore('data', () => {
     }
     return [...out.values()]
   }
+
+  /** Items that name each other in their text but aren't connected yet. */
+  const suggestions = computed(() => suggestLinks(items.value, links.value, profile.value.dismissedLinks ?? []))
 
   const checkinSets = computed(() => {
     const m = new Map<string, Set<string>>()
@@ -297,6 +301,13 @@ export const useData = defineStore('data', () => {
     })
   }
 
+  /** "Not related": stop suggesting this pair. */
+  async function dismissSuggestion(a: string, b: string) {
+    const key = pairKey(a, b)
+    const cur = profile.value.dismissedLinks ?? []
+    if (!cur.includes(key)) await saveProfile({ ...profile.value, dismissedLinks: [...cur, key] })
+  }
+
   async function saveProfile(p: Profile) {
     profile.value = { ...p }
     await sync(api.profile(p))
@@ -322,6 +333,8 @@ export const useData = defineStore('data', () => {
   }
 
   return {
+    suggestions,
+    dismissSuggestion,
     items, links, checkins, moods, profile, loaded, loadError, meta, persisted,
     byId, tasks, habits, goals, people, events, notes, fieldDefs, segments, assets, ledger, sims, linked, related, doneDates,
     xp, totals, totalXp, level, moodOf,

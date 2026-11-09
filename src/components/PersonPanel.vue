@@ -10,6 +10,7 @@ import { titleOf } from '@/lib/itemView'
 import type { Person } from '@/lib/types'
 import ItemPicker from './ItemPicker.vue'
 import RelatedGroups from './RelatedGroups.vue'
+import LinkSuggestions from './LinkSuggestions.vue'
 
 const props = defineProps<{ person: Person }>()
 const data = useData()
@@ -165,6 +166,7 @@ const emit = defineEmits<{ select: [id: string] }>()
     <section v-if="related.length" class="block">
       <div class="block-title">相关 <span class="faint">{{ related.length }}</span></div>
       <RelatedGroups :id="p.id" :hide="['person']" />
+      <LinkSuggestions :id="p.id" />
     </section>
   </div>
 </template>
