@@ -6,6 +6,8 @@ import { useData } from './data'
 /** Ports the local ngnl-mcp server may listen on (it takes the first free one). */
 const PORTS = [5311, 5312, 5313, 5314, 5315]
 const RETRY_MS = 4000
+/** Version of public/ngnl-mcp.mjs that has every tool this page can run. */
+const LATEST = '1.2.0'
 
 export interface McpLogEntry {
   at: string
@@ -40,7 +42,7 @@ export const useMcp = defineStore('mcp', () => {
   const enabled = ref(load('ngnl-mcp', false))
   const allowWrite = ref(load('ngnl-mcp-write', true))
   // shallowRef: WebSocket objects must not be wrapped in reactive proxies (their methods need the real object).
-  const sockets = shallowRef(new Map<number, { ws: WebSocket; client: string }>())
+  const sockets = shallowRef(new Map<number, { ws: WebSocket; client: string; version?: string }>())
   const attempts = ref(0)
   /** Set once any connection opened, so "can't connect" help isn't shown after a normal disconnect. */
   const everConnected = ref(false)
@@ -72,7 +74,7 @@ export const useMcp = defineStore('mcp', () => {
     } catch {
       return
     }
-    const entry = { ws, client: 'AI 助手' }
+    const entry: { ws: WebSocket; client: string; version?: string } = { ws, client: 'AI 助手' }
     sockets.value = new Map(sockets.value).set(port, entry)
     ws.onopen = () => {
       everConnected.value = true
@@ -95,8 +97,8 @@ export const useMcp = defineStore('mcp', () => {
     timer = setTimeout(tick, RETRY_MS)
   }
 
-  async function onMessage(entry: { ws: WebSocket; client: string }, raw: string) {
-    let msg: { type: string; id?: string; tool?: string; args?: Record<string, unknown>; client?: string }
+  async function onMessage(entry: { ws: WebSocket; client: string; version?: string }, raw: string) {
+    let msg: { type: string; id?: string; tool?: string; args?: Record<string, unknown>; client?: string; version?: string }
     try {
       msg = JSON.parse(raw)
     } catch {
@@ -104,6 +106,7 @@ export const useMcp = defineStore('mcp', () => {
     }
     if (msg.type === 'welcome') {
       if (msg.client) entry.client = msg.client
+      if (msg.version) entry.version = msg.version
       sockets.value = new Map(sockets.value)
       return
     }
@@ -148,5 +151,7 @@ export const useMcp = defineStore('mcp', () => {
     if (enabled.value) tick()
   }
 
-  return { enabled, allowWrite, status, connected, attempts, everConnected, log, mobile, permission, start, checkPermission }
+  /** A connected program older than the page's tools (missing 推演 / 资产 tools). */
+  const outdated = computed(() => connected.value.some((s) => !s.version || s.version.localeCompare(LATEST, undefined, { numeric: true }) < 0))
+  return { enabled, allowWrite, status, connected, outdated, attempts, everConnected, log, mobile, permission, start, checkPermission }
 })

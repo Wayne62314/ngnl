@@ -13,6 +13,7 @@ import { attrOf, MOODS, type Task } from '@/lib/types'
 import Avatar from '@/components/Avatar.vue'
 import TaskRow from '@/components/TaskRow.vue'
 import CharacterCard from '@/components/CharacterCard.vue'
+import PinnedSims from '@/components/PinnedSims.vue'
 
 const data = useData()
 const router = useRouter()
@@ -221,6 +222,8 @@ const needBackup = computed(() => {
         </RouterLink>
       </div>
     </section>
+
+    <PinnedSims />
 
     <section class="row-2">
       <div>

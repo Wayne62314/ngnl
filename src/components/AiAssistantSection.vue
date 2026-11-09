@@ -98,6 +98,13 @@ const EXAMPLES = ['看看我这周过得怎么样，给我写个周报', '我哪
         </label>
       </div>
 
+      <div v-if="mcp.outdated" class="help">
+        <ShieldAlert :size="18" />
+        <div>
+          <b>连接程序有新版本。</b>新版可以让 AI 查看资产与收支、帮你搭推演图。重新下载下面的 ngnl-mcp.mjs，覆盖原来的文件，再重启 Claude 即可。
+        </div>
+      </div>
+
       <div v-if="stuck" class="help">
         <ShieldAlert :size="18" />
         <div>

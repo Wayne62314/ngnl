@@ -10,6 +10,10 @@
 - **人物**：以你为中心的亲密度同心圆，按亲密度提醒联系
 - **经历**：时间轴，支持记录抉择（选项、选择、原因）
 - **灵感与情报**：灵感看板、情报标签库，可一键转为任务或目标
+- **轨迹**：人生各条线（居住、工作、感情…）的时间轴，离线地图上拖动时间看你在哪
+- **资产**：行囊、愿望单、账本和资产概览图；金额默认隐藏
+- **推演**：把习惯、资产、收支拖到画布上用线连起来，算"年底前买得起吗""多久能攒够"；只读计算，结论可以固定到今日页
+- **自定义字段**：给任何条目加数字、金额、日期等字段，推演时可以直接用
 - 任何条目都能互相**关联**；`Ctrl+K` 全局搜索与新建
 
 **在线使用：<https://wayne62314.github.io/ngnl/>**（数据只保存在你自己的浏览器里）
@@ -35,7 +39,7 @@
 
 ## AI 助手（MCP，电脑版）
 
-可以让 Claude Desktop、Claude Code 等支持 [MCP](https://modelcontextprotocol.io/) 的 AI 助手直接读写你的数据，例如"给我写这周的周报""把逾期任务改到明天""最近该联系谁"。
+可以让 Claude Desktop、Claude Code 等支持 [MCP](https://modelcontextprotocol.io/) 的 AI 助手直接读写你的数据，例如"给我写这周的周报""把逾期任务改到明天""最近该联系谁""帮我搭一张推演图，算算林夏生日前能不能买到 Switch 2"。
 
 1. 安装 Node.js 18+，在应用的「设置与备份 → AI 助手」里下载 `ngnl-mcp.mjs`（就是本仓库的 [`public/ngnl-mcp.mjs`](public/ngnl-mcp.mjs)，单文件、零依赖）
 2. 加到 AI 助手里：`claude mcp add ngnl -- node /path/to/ngnl-mcp.mjs`，或在 Claude Desktop 配置里加 `{"mcpServers":{"ngnl":{"command":"node","args":["/path/to/ngnl-mcp.mjs"]}}}`

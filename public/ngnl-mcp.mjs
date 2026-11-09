@@ -14,7 +14,7 @@
 import { createServer } from 'node:http'
 import { createHash, randomUUID } from 'node:crypto'
 
-const VERSION = '1.1.0'
+const VERSION = '1.2.0'
 const PORTS = [5311, 5312, 5313, 5314, 5315]
 const ORIGINS = new Set([
   'https://wayne62314.github.io',
@@ -31,6 +31,8 @@ const log = (...a) => console.error('[ngnl-mcp]', ...a)
 
 const str = (description) => ({ type: 'string', description })
 const DATE = 'YYYY-MM-DD'
+
+const ITEM_TYPES = ['task', 'habit', 'goal', 'person', 'event', 'note', 'asset', 'ledger', 'segment']
 
 const TOOLS = [
   {
@@ -78,8 +80,8 @@ const TOOLS = [
   },
   {
     name: 'search',
-    description: '按关键词搜索所有条目（任务、习惯、目标、人物、经历、灵感、情报），返回 id、类型和标题。',
-    inputSchema: { type: 'object', properties: { query: str('关键词'), type: { type: 'string', enum: ['task', 'habit', 'goal', 'person', 'event', 'note'] } }, required: ['query'] },
+    description: '按关键词搜索所有条目（任务、习惯、目标、人物、经历、灵感、情报、资产、收支、处境、推演图），返回 id、类型和标题。',
+    inputSchema: { type: 'object', properties: { query: str('关键词'), type: { type: 'string', enum: [...ITEM_TYPES, 'sim'] } }, required: ['query'] },
     annotations: { readOnlyHint: true },
   },
   {
@@ -91,10 +93,13 @@ const TOOLS = [
   {
     name: 'create_item',
     description:
-      '新建条目。常用字段：task {title, attr, difficulty 1|2|3, due ' + DATE + ', goalId, notes}；habit {title, attr, days [0-6, 0=周日]}；goal {title, status unknown|todo|doing|done, parentId}；person {title 名字, relation, closeness 1-5, birthday MM-DD 或 YYYY-MM-DD, met, traits}；event {title, date, kind event|milestone|decision, notes}；note {title, kind idea|intel, notes, tags}。',
+      '新建条目。常用字段：task {title, attr, difficulty 1|2|3, due ' + DATE + ', goalId, notes}；habit {title, attr, days [0-6, 0=周日]}；goal {title, status unknown|todo|doing|done, parentId}；person {title 名字, relation, closeness 1-5, birthday MM-DD 或 YYYY-MM-DD, met, traits}；event {title, date, kind event|milestone|decision, notes}；note {title, kind idea|intel, notes, tags}；' +
+      'asset {title, category item|cred|fame|finance|debt, status owned|wanted|lost|sold, value 元, saved 元(想要的东西已经攒了多少), acquired ' + DATE + '}；' +
+      'ledger {title, flow income|expense, amount 元, repeat none|week|month|year, date ' + DATE + ' 首次日期, until, category}；' +
+      'segment {title, lane home|work|love|health|money 或自定义轨道, start ' + DATE + ', end}。',
     inputSchema: {
       type: 'object',
-      properties: { type: { type: 'string', enum: ['task', 'habit', 'goal', 'person', 'event', 'note'] }, fields: { type: 'object', description: '条目字段' } },
+      properties: { type: { type: 'string', enum: ITEM_TYPES }, fields: { type: 'object', description: '条目字段' } },
       required: ['type', 'fields'],
     },
   },
@@ -129,6 +134,43 @@ const TOOLS = [
         preset: { type: 'string', enum: ['scholar', 'warrior', 'artisan', 'envoy', 'merchant', 'hermit'] },
         reset: { type: 'boolean' },
       },
+    },
+  },
+  {
+    name: 'list_assets',
+    description: '资产与收支：净资产、本月收入/支出/结余、每件资产（拥有的、想要的及价格和已攒金额）、每条收支（含重复周期和折合每月）。',
+    inputSchema: { type: 'object', properties: {} },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: 'get_sim_guide',
+    description:
+      '推演图（只读计算画布）的说明：所有节点种类及其输入/输出端口和类型。传 itemIds 可以查看这些条目放上画布后能输出哪些值（例如习惯的完成率、平均每天几次，资产的价格、已攒，收支的折合每天，自定义数字字段）。搭图前先调用它。',
+    inputSchema: { type: 'object', properties: { itemIds: { type: 'array', items: { type: 'string' }, description: '想放上画布的条目 id' } } },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: 'list_sims',
+    description: '列出用户的推演图及结论（能/不能、预计日期等）。传 id 返回这张图每个节点算出的值。',
+    inputSchema: { type: 'object', properties: { id: str('推演图 id，可选') } },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: 'save_sim',
+    description:
+      '新建或覆盖一张推演图，用来回答"我能不能在某天前买得起 X""照现在的习惯多久能达成 Y"这类问题。' +
+      'nodes: [{id 自己起的短名, kind, data, x?, y?, off?}]，edges: [{from 节点id, fromPort, to 节点id, toPort}]。不给坐标会自动排版。' +
+      '端口和类型先用 get_sim_guide 查。保存后返回每个节点算出的值，可据此向用户解释结论。传 id 表示覆盖已有的图；pinned: true 会把结论固定到今日页。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: str('要覆盖的推演图 id，可选'),
+        title: str('图的名字，例如 年底前买 Switch 2'),
+        nodes: { type: 'array', items: { type: 'object' } },
+        edges: { type: 'array', items: { type: 'object' } },
+        pinned: { type: 'boolean' },
+      },
+      required: ['title', 'nodes', 'edges'],
     },
   },
   {

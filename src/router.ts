@@ -10,6 +10,7 @@ export const router = createRouter({
     { path: '/goals', component: () => import('./views/GoalsView.vue'), meta: { title: '愿景树' } },
     { path: '/people', component: () => import('./views/PeopleView.vue'), meta: { title: '人物' } },
     { path: '/assets', component: () => import('./views/AssetsView.vue'), meta: { title: '资产' } },
+    { path: '/simulate/:id?', component: () => import('./views/SimulateView.vue'), meta: { title: '推演' } },
     { path: '/trajectory', component: () => import('./views/TrajectoryView.vue'), meta: { title: '轨迹' } },
     { path: '/timeline', component: () => import('./views/TimelineView.vue'), meta: { title: '经历' } },
     { path: '/notes', component: () => import('./views/NotesView.vue'), meta: { title: '灵感与情报' } },

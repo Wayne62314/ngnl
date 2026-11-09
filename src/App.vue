@@ -10,6 +10,7 @@ import {
   Ellipsis,
   MapPinned,
   Backpack,
+  Workflow,
   Lightbulb,
   Network,
   RefreshCw,
@@ -49,6 +50,7 @@ const nav = [
   { to: '/people', label: '人物', icon: Users, phone: true },
   { to: '/trajectory', label: '轨迹', icon: MapPinned },
   { to: '/assets', label: '资产', icon: Backpack },
+  { to: '/simulate', label: '推演', icon: Workflow },
   { to: '/notes', label: '灵感', icon: Lightbulb },
 ]
 const more = computed(() => [...nav.filter((n) => !n.phone), { to: '/settings', label: '设置与备份', icon: Settings }])
