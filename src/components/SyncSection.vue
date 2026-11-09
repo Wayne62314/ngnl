@@ -143,7 +143,10 @@ setInterval(() => nowTick.value++, 30_000)
         <ShieldCheck v-else :size="16" />
         <span class="grow">
           <template v-if="sync.state === 'syncing'">正在同步…</template>
-          <template v-else-if="sync.state === 'offline'">暂时离线，联网后会自动同步。修改都保存在本机，不会丢。</template>
+          <template v-else-if="sync.state === 'offline'">
+            暂时连不上同步服务器，联网后会自动同步。修改都保存在本机，不会丢。
+            <span class="hint">如果一直连不上：同步服务器在中国大陆可能需要开启代理 / VPN 才能访问。</span>
+          </template>
           <template v-else-if="sync.state === 'error'">同步出错：{{ sync.error }}</template>
           <template v-else>已同步<span v-if="ago" :key="nowTick"> · {{ ago }}</span>，端到端加密</template>
         </span>
@@ -248,6 +251,12 @@ setInterval(() => nowTick.value++, 30_000)
 }
 .status span {
   color: var(--text-2);
+}
+.hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-3);
 }
 .status.offline {
   background: var(--sunken);

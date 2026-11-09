@@ -5,8 +5,8 @@ compatibility_date = "2026-10-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "ngnl-sync"
-# Filled in by `wrangler d1 create ngnl-sync`.
-database_id = "00000000-0000-0000-0000-000000000000"
+# Created with `wrangler d1 create ngnl-sync --location apac`.
+database_id = "d773de56-9d6a-418a-aacf-b75b51341961"
 
 [vars]
 # Pages allowed to call the relay (comma-separated).

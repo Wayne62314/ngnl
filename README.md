@@ -24,6 +24,15 @@
 - 两周没备份且有改动时，今日页会提醒
 - 支持离线使用；Chrome / Edge 地址栏可以「安装为应用」，手机浏览器可以「添加到主屏幕」
 
+## 多设备同步（端到端加密）
+
+在「设置与备份 → 多设备同步」里开启，用手机扫二维码即可加入，不需要账号。
+
+- 数据在设备上用 AES-256-GCM 加密后才上传；钥匙由同步码派生，只保存在你的设备上。同步服务器只能看到一个随机编号和密文
+- 每条记录单独合并：两台设备都离线修改后再联网，各自的修改都会保留；同一条记录以后改的为准，删除会同步，在删除之后又编辑会恢复该条目；从备份恢复会覆盖其他设备
+- 同步服务器在 [`sync-server/`](sync-server/)（Cloudflare Workers + D1，免费额度即可）。自己部署：`cd sync-server && npm install && npx wrangler login && npx wrangler d1 create ngnl-sync`，把 database_id 填进 `wrangler.toml`，再 `npm run db:init && npm run deploy`，然后在应用的「高级：同步服务器」里填你的地址
+- 注意：`*.workers.dev` 在中国大陆无法直连，需要代理；绑定自己的域名可能可以改善
+
 ## AI 助手（MCP，电脑版）
 
 可以让 Claude Desktop、Claude Code 等支持 [MCP](https://modelcontextprotocol.io/) 的 AI 助手直接读写你的数据，例如"给我写这周的周报""把逾期任务改到明天""最近该联系谁"。
@@ -56,4 +65,5 @@ node scripts/make-demo.mjs   # 生成一年的模拟数据 data/demo-1year.json�
 - `src/lib/api.ts`：把两者组合起来，供 Pinia store 使用
 - `src/lib/game.ts`：经验、等级、连续打卡、成就等规则，全部由真实记录推导
 - `public/sw.js`：离线缓存（构建时由 `vite.config.ts` 写入文件清单）
+- `src/lib/merge.ts`：多设备合并规则；`src/lib/syncCrypto.ts`：同步码与加密；`src/stores/sync.ts`：同步流程
 - `public/ngnl-mcp.mjs`：MCP server（stdio）+ 本机 WebSocket 桥；`src/lib/mcpTools.ts` 是工具在网页端的实现，`src/stores/mcp.ts` 管理连接
