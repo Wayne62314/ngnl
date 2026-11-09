@@ -2,12 +2,13 @@
 import { computed, reactive, watch } from 'vue'
 import { useData } from '@/stores/data'
 import { addDays, fromKey, today } from '@/lib/dates'
-import { achievements, attrLevel, bestStreak, rankOf } from '@/lib/game'
+import { achievements, attrLevel, bestStreak, rankOf, TIER_NAMES } from '@/lib/game'
 import { ATTR_ICON } from '@/lib/attrIcons'
 import { ATTRS, MOODS, type Profile } from '@/lib/types'
 import Avatar from '@/components/Avatar.vue'
 import XpBar from '@/components/XpBar.vue'
 import Radar from '@/components/Radar.vue'
+import YearHeatmap from '@/components/YearHeatmap.vue'
 
 const data = useData()
 const t = today()
@@ -61,9 +62,11 @@ const moodAvg = computed(() => {
 const dayLabel = (k: string) => `${fromKey(k).getMonth() + 1}/${fromKey(k).getDate()}`
 
 const ach = computed(() =>
-  achievements({ items: data.items, checkins: data.checkins, moods: data.moods, profile: data.profile, bestStreak: best.value }),
+  achievements({ items: data.items, checkins: data.checkins, moods: data.moods, profile: data.profile, bestStreak: best.value, xp: data.xp }),
 )
-const unlocked = computed(() => ach.value.filter((a) => a.unlocked).length)
+const unlocked = computed(() => ach.value.reduce((s, a) => s + a.tier, 0))
+const totalTiers = computed(() => ach.value.reduce((s, a) => s + a.tiers.length, 0))
+const TIER_COLORS = ['#b87333', '#9aa4b1', 'var(--gold-2)', '#6ad1e3', '#c36bff']
 </script>
 
 <template>
@@ -122,6 +125,11 @@ const unlocked = computed(() => ach.value.filter((a) => a.unlocked).length)
       </div>
     </div>
 
+    <section class="card card-pad year-card">
+      <h2 class="section-title">这一年</h2>
+      <YearHeatmap :xp="data.xp" />
+    </section>
+
     <section class="card card-pad">
       <h2 class="section-title">
         近 30 天心情
@@ -138,13 +146,30 @@ const unlocked = computed(() => ach.value.filter((a) => a.unlocked).length)
     </section>
 
     <section>
-      <h2 class="section-title">成就 <span class="count">{{ unlocked }} / {{ ach.length }}</span></h2>
+      <h2 class="section-title">成就 <span class="count">{{ unlocked }} / {{ totalTiers }} 枚</span></h2>
       <div class="achs">
-        <div v-for="a in ach" :key="a.key" class="card ach" :class="{ on: a.unlocked }">
+        <div
+          v-for="a in ach"
+          :key="a.key"
+          class="card ach"
+          :class="{ on: a.tier > 0, max: a.tier === a.tiers.length }"
+          :style="{ '--t': TIER_COLORS[Math.max(0, a.tier - 1)] }"
+        >
           <span class="ai">{{ a.icon }}</span>
-          <div>
-            <b>{{ a.name }}</b>
-            <div class="faint small">{{ a.desc }}</div>
+          <div class="grow">
+            <div class="ah">
+              <b>{{ a.name }}</b>
+              <span v-if="a.tier" class="tier">{{ TIER_NAMES[a.tier - 1] }}</span>
+              <span class="pips">
+                <i v-for="(t, i) in a.tiers" :key="t" :class="{ got: i < a.tier }" :style="{ '--c': TIER_COLORS[i] }" />
+              </span>
+            </div>
+            <template v-if="a.tier < a.tiers.length">
+              <div class="faint small">下一级：{{ a.desc(a.tiers[a.tier]) }}</div>
+              <div class="prog"><div :style="{ width: `${Math.min(100, (a.value / a.tiers[a.tier]) * 100)}%` }" /></div>
+              <div class="faint small num">{{ a.value }} / {{ a.tiers[a.tier] }}</div>
+            </template>
+            <div v-else class="faint small">已满级：{{ a.desc(a.tiers.at(-1)!) }}</div>
           </div>
         </div>
       </div>
@@ -308,9 +333,12 @@ const unlocked = computed(() => ach.value.filter((a) => a.unlocked).length)
 .strip-axis {
   margin-top: 6px;
 }
+.year-card {
+  margin-bottom: 16px;
+}
 .achs {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 10px;
 }
 .ach {
@@ -319,19 +347,66 @@ const unlocked = computed(() => ach.value.filter((a) => a.unlocked).length)
   gap: 12px;
   padding: 12px 14px;
   box-shadow: none;
-  opacity: 0.55;
 }
 .ach .ai {
-  font-size: 24px;
+  font-size: 26px;
   filter: grayscale(1);
+  opacity: 0.5;
 }
 .ach.on {
-  opacity: 1;
-  border-color: color-mix(in srgb, var(--gold) 45%, transparent);
-  background: linear-gradient(135deg, var(--gold-soft), var(--surface) 75%);
+  border-color: color-mix(in srgb, var(--t) 50%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--t) 14%, var(--surface)), var(--surface) 75%);
 }
 .ach.on .ai {
   filter: none;
+  opacity: 1;
+}
+.ach.max {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--t) 40%, transparent), 0 4px 18px color-mix(in srgb, var(--t) 22%, transparent);
+}
+.ah {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tier {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: #1c1a24;
+  background: var(--t);
+}
+.pips {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: auto;
+}
+.pips i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sunken);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.pips i.got {
+  background: var(--c);
+  box-shadow: none;
+}
+.prog {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--sunken);
+  overflow: hidden;
+  margin: 4px 0 2px;
+}
+.prog div {
+  height: 100%;
+  background: var(--t, var(--gold));
+  opacity: 0.85;
+}
+.ach:not(.on) .prog div {
+  background: var(--text-3);
 }
 @media (max-width: 860px) {
   .grid {

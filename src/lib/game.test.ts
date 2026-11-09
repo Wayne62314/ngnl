@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { addDays, weekday } from './dates'
-import { activeStreak, attrTotals, bestStreak, rankOf, characterLevel, contactOverdue, goalProgress, isLocked, levelFor, streak, taskBucket, xpEntries } from './game'
+import { achievements, activeStreak, attrTotals, bestActiveStreak, bestStreak, rankOf, characterLevel, contactOverdue, goalProgress, isLocked, levelFor, streak, taskBucket, xpEntries } from './game'
 import type { Goal, Habit, Item, Person, Task } from './types'
 
 const base = { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', title: 'x' }
@@ -9,10 +9,18 @@ const habit = (days: number[]): Habit => ({ ...base, id: 'h', type: 'habit', att
 
 describe('levels', () => {
   it('starts at level 1 and rolls over exactly at the threshold', () => {
-    expect(levelFor(0, 40, 20)).toMatchObject({ level: 1, into: 0, need: 60 })
-    expect(levelFor(59, 40, 20).level).toBe(1)
-    expect(levelFor(60, 40, 20)).toMatchObject({ level: 2, into: 0, need: 80 })
-    expect(characterLevel(60 + 80 + 5)).toMatchObject({ level: 3, into: 5 })
+    const lin = (l: number) => 40 + 20 * l
+    expect(levelFor(0, lin)).toMatchObject({ level: 1, into: 0, need: 60 })
+    expect(levelFor(59, lin).level).toBe(1)
+    expect(levelFor(60, lin)).toMatchObject({ level: 2, into: 0, need: 80 })
+    expect(characterLevel(0)).toMatchObject({ level: 1, need: 52 })
+  })
+  it('keeps levels meaningful over years', () => {
+    // ~50 XP a day: about Lv.28 after one year, 传奇 (Lv.40) takes years.
+    expect(characterLevel(50 * 365).level).toBeGreaterThanOrEqual(25)
+    expect(characterLevel(50 * 365).level).toBeLessThanOrEqual(30)
+    expect(characterLevel(50 * 365 * 2).level).toBeLessThan(40)
+    expect(characterLevel(300).level).toBeGreaterThanOrEqual(4) // a good first week
   })
 })
 
@@ -101,5 +109,18 @@ describe('ranks and activity', () => {
     expect(activeStreak([e('2026-11-09'), e('2026-11-08'), e('2026-11-06')], '2026-11-09')).toBe(2)
     expect(activeStreak([e('2026-11-08'), e('2026-11-07')], '2026-11-09')).toBe(2)
     expect(activeStreak([e('2026-11-07')], '2026-11-09')).toBe(0)
+  })
+})
+
+describe('achievements', () => {
+  it('counts tiers and the longest active run', () => {
+    const e = (date: string) => ({ attr: 'mind' as const, xp: 1, date })
+    expect(bestActiveStreak([e('2026-01-01'), e('2026-01-02'), e('2026-01-02'), e('2026-01-05'), e('2026-01-06'), e('2026-01-07')])).toBe(3)
+    const tasks = Array.from({ length: 12 }, () => task({ status: 'done' }))
+    const list = achievements({ items: tasks, checkins: [], moods: [], profile: {}, bestStreak: 0, xp: [] })
+    const t = list.find((x) => x.key === 'tasks')!
+    expect(t.tier).toBe(2)
+    expect(t.value).toBe(12)
+    expect(list.find((x) => x.key === 'self')!.tier).toBe(0)
   })
 })

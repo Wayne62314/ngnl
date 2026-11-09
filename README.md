@@ -44,6 +44,7 @@ npm run dev        # 开发：http://localhost:5173
 npm run build      # 构建到 dist/，可以直接放到任何静态网站托管（GitHub Pages、Cloudflare Pages…）
 npm run preview    # 本地预览构建结果：http://localhost:4173
 npm test           # 单元测试
+node scripts/make-demo.mjs   # 生成一年的模拟数据 data/demo-1year.json，可在设置里「从备份恢复」导入
 ```
 
 构建产物使用相对路径和 hash 路由，放在任何子目录下都能用，不需要服务器端配置。

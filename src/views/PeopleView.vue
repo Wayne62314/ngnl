@@ -56,16 +56,52 @@ const S = 600
 const C = S / 2
 const RADII = [0, 272, 232, 188, 142, 98] // by closeness 1..5
 
+/**
+ * Each person sits on the ring for their closeness. With many people, a crowded
+ * ring first shrinks its bubbles and staggers them inward/outward, then a short
+ * relaxation slides overlapping bubbles apart along their rings (so the ring,
+ * and with it the closeness, never changes).
+ */
 const nodes = computed(() => {
-  const out = new Map<string, { p: Person; x: number; y: number; r: number; color: string }>()
+  type N = { p: Person; c: number; R: number; a: number; r: number; color: string; x: number; y: number }
+  const all: N[] = []
+  const GAP = 12 // room for the name label between bubbles
   for (let c = 5; c >= 1; c--) {
     const ring = data.people.filter((p) => (p.closeness || 3) === c).sort((a, b) => groupOf(a).localeCompare(groupOf(b)) || a.createdAt.localeCompare(b.createdAt))
+    if (!ring.length) continue
+    let r = 15 + c * 1.6
+    const circumference = 2 * Math.PI * RADII[c]
+    const crowd = (ring.length * (2 * r + GAP)) / circumference
+    if (crowd > 0.9) r = Math.max(10, r * Math.max(0.65, 0.9 / crowd))
+    const stagger = ring.length * (2 * r + GAP) > circumference * 0.95
     ring.forEach((p, i) => {
-      const a = (Math.PI * 2 * i) / ring.length - Math.PI / 2 + c * 0.6
-      out.set(p.id, { p, x: C + RADII[c] * Math.cos(a), y: C + RADII[c] * Math.sin(a), r: 15 + c * 1.6, color: groupMeta(groupOf(p)).color })
+      const R = RADII[c] + (stagger ? (i % 2 ? 11 : -11) : 0)
+      all.push({ p, c, R, r, a: (Math.PI * 2 * i) / ring.length - Math.PI / 2 + c * 0.6, color: groupMeta(groupOf(p)).color, x: 0, y: 0 })
     })
   }
-  return out
+  const place = () => all.forEach((n) => ((n.x = C + n.R * Math.cos(n.a)), (n.y = C + n.R * Math.sin(n.a))))
+  place()
+  for (let iter = 0; iter < 120; iter++) {
+    let moved = false
+    for (let i = 0; i < all.length; i++) {
+      for (let j = i + 1; j < all.length; j++) {
+        const A = all[i]
+        const B = all[j]
+        const d = Math.hypot(A.x - B.x, A.y - B.y)
+        const min = A.r + B.r + GAP
+        if (d >= min) continue
+        let diff = B.a - A.a
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff)) || 0.01
+        const push = (min - d) / 2 + 0.5
+        A.a -= Math.sign(diff) * (push / A.R)
+        B.a += Math.sign(diff) * (push / B.R)
+        moved = true
+      }
+    }
+    place()
+    if (!moved) break
+  }
+  return new Map(all.map((n) => [n.p.id, { p: n.p, x: n.x, y: n.y, r: n.r, color: n.color }]))
 })
 
 /** Person-to-person links ("认识"), drawn as arcs bowed toward the centre. */
@@ -195,7 +231,7 @@ async function add() {
               :key="n.p.id"
               class="pnode"
               :class="[dim(n.p.id), { sel: n.p.id === focusId, due: contactOverdue(n.p, t) !== null }]"
-              :style="{ left: `${(n.x / S) * 100}%`, top: `${(n.y / S) * 100}%`, '--g': n.color, '--d': `${n.r * 2}px` }"
+              :style="{ left: `${(n.x / S) * 100}%`, top: `${(n.y / S) * 100}%`, '--g': n.color, '--d': n.r * 2 }"
               :title="titleOf(n.p)"
               @click="select(n.p.id, true)"
               @dblclick="ui.open(n.p.id)"
@@ -337,6 +373,7 @@ async function add() {
 }
 .map {
   position: relative;
+  container-type: inline-size;
   width: 100%;
   max-width: 620px;
   aspect-ratio: 1;
@@ -410,9 +447,9 @@ async function add() {
   opacity: 0.12;
 }
 .pnode .bubble {
-  width: var(--d);
-  height: var(--d);
-  font-size: calc(var(--d) * 0.4);
+  width: max(18px, calc(var(--d) * 100cqw / 600));
+  height: max(18px, calc(var(--d) * 100cqw / 600));
+  font-size: max(9px, calc(var(--d) * 100cqw / 600 * 0.4));
   position: relative;
 }
 .bubble {
@@ -616,8 +653,6 @@ async function add() {
     gap: 1px;
   }
   .pnode .bubble {
-    width: calc(var(--d) * 0.68);
-    height: calc(var(--d) * 0.68);
     border-width: 2px;
   }
   .me {

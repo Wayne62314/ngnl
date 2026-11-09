@@ -45,18 +45,24 @@ export interface LevelInfo {
   total: number
 }
 
-/** Level curve: going from level L to L+1 costs base + step * L XP. */
-export function levelFor(total: number, base: number, step: number): LevelInfo {
+/**
+ * Level curve: going from level L to L+1 costs cost(L) XP. Both curves grow
+ * quadratically so levels keep meaning something after years of use: an
+ * active user (~50 XP a day) reaches about Lv.28 after one year.
+ */
+export function levelFor(total: number, cost: (level: number) => number): LevelInfo {
   let level = 1
   let rest = total
-  while (rest >= base + step * level) {
-    rest -= base + step * level
+  while (rest >= cost(level)) {
+    rest -= cost(level)
     level++
   }
-  return { level, into: rest, need: base + step * level, total }
+  return { level, into: rest, need: cost(level), total }
 }
 
-export const characterLevel = (xp: number) => levelFor(xp, 40, 20)
+export const CHARACTER_COST = (l: number) => Math.round(30 + 20 * l + 1.5 * l * l)
+export const ATTR_COST = (l: number) => Math.round(20 + 10 * l + 0.8 * l * l)
+export const characterLevel = (xp: number) => levelFor(xp, CHARACTER_COST)
 
 /** Rank titles unlocked by character level. A custom title in the profile overrides them. */
 export const RANKS: { from: number; title: string }[] = [
@@ -74,6 +80,18 @@ export function rankOf(level: number): { title: string; next?: { from: number; t
   return { title: RANKS[i].title, next: RANKS[i + 1] }
 }
 
+/** Longest run of consecutive days with any XP, ever. */
+export function bestActiveStreak(entries: XpEntry[]): number {
+  const days = [...new Set(entries.map((e) => e.date))].sort()
+  let best = 0
+  let run = 0
+  for (let i = 0; i < days.length; i++) {
+    run = i && addDays(days[i - 1], 1) === days[i] ? run + 1 : 1
+    best = Math.max(best, run)
+  }
+  return best
+}
+
 /** Consecutive days with any XP, ending today (or yesterday, if today has nothing yet). */
 export function activeStreak(entries: XpEntry[], today: string): number {
   const days = new Set(entries.map((e) => e.date))
@@ -85,7 +103,7 @@ export function activeStreak(entries: XpEntry[], today: string): number {
   }
   return n
 }
-export const attrLevel = (xp: number) => levelFor(xp, 20, 10)
+export const attrLevel = (xp: number) => levelFor(xp, ATTR_COST)
 
 export function attrTotals(entries: XpEntry[]): Record<Attr, number> {
   const t = Object.fromEntries(ATTRS.map((a) => [a.key, 0])) as Record<Attr, number>
@@ -182,47 +200,68 @@ export function goalProgress(goal: Goal, goals: Goal[], tasks: Task[]): { done: 
   return { done, total }
 }
 
+export const TIER_NAMES = ['铜', '银', '金', '钻石', '传说']
+
 export interface Achievement {
   key: string
   name: string
-  desc: string
   icon: string
-  unlocked: boolean
+  /** Thresholds for each tier, lowest first. */
+  tiers: number[]
+  value: number
+  /** Number of tiers reached (0 = locked). */
+  tier: number
+  /** What reaching a threshold means, e.g. n => `完成 ${n} 个任务`. */
+  desc: (n: number) => string
 }
 
+/** Tiered achievements, so there is always a next step even after years of use. */
 export function achievements(data: {
   items: Item[]
   checkins: Checkin[]
   moods: Mood[]
   profile: Profile
   bestStreak: number
+  xp: XpEntry[]
 }): Achievement[] {
   const tasksDone = data.items.filter((i) => i.type === 'task' && i.status === 'done').length
-  const people = data.items.filter((i) => i.type === 'person').length
+  const people = data.items.filter((i): i is Person => i.type === 'person')
+  const contacts = people.reduce((s, p) => s + new Set(p.contacts ?? []).size, 0)
   const events = data.items.filter((i) => i.type === 'event').length
   const ideas = data.items.filter((i) => i.type === 'note' && i.kind === 'idea').length
   const goals = data.items.filter((i): i is Goal => i.type === 'goal')
-  const rootDone = goals.some((g) => !g.parentId && g.status === 'done')
+  const rootsDone = goals.filter((g) => !g.parentId && g.status === 'done').length
   const depth = (g: Goal, n = 1): number => {
     const kids = goals.filter((c) => c.parentId === g.id)
     return n > 20 || !kids.length ? n : Math.max(...kids.map((k) => depth(k, n + 1)))
   }
   const maxDepth = Math.max(0, ...goals.filter((g) => !g.parentId).map((g) => depth(g)))
   const p = data.profile
-  const profileFilled = [p.name, p.background, p.strengths, p.weaknesses, p.interests].every((v) => v?.trim())
-  const a = (key: string, name: string, desc: string, icon: string, unlocked: boolean): Achievement => ({ key, name, desc, icon, unlocked })
+  const profileFilled = [p.name, p.background, p.strengths, p.weaknesses, p.interests].every((v) => v?.trim()) ? 1 : 0
+  const level = characterLevel(data.xp.reduce((s, e) => s + e.xp, 0)).level
+
+  const a = (key: string, name: string, icon: string, tiers: number[], value: number, desc: (n: number) => string): Achievement => ({
+    key,
+    name,
+    icon,
+    tiers,
+    value,
+    tier: tiers.filter((t) => value >= t).length,
+    desc,
+  })
   return [
-    a('first-step', '第一步', '完成第一个任务', '🌱', tasksDone >= 1),
-    a('ten-tasks', '渐入佳境', '完成 10 个任务', '⚔️', tasksDone >= 10),
-    a('hundred-tasks', '百炼', '完成 100 个任务', '🏆', tasksDone >= 100),
-    a('streak-7', '七日之约', '一个习惯连续坚持 7 次', '🔥', data.bestStreak >= 7),
-    a('streak-30', '习惯成自然', '一个习惯连续坚持 30 次', '💎', data.bestStreak >= 30),
-    a('know-self', '认识自己', '填完角色档案', '🪞', profileFilled),
-    a('mood-7', '心境记录者', '记录 7 天心情', '📔', data.moods.length >= 7),
-    a('people-5', '同行者', '记下 5 位重要的人', '🤝', people >= 5),
-    a('events-10', '回望', '记录 10 段经历', '🕰️', events >= 10),
-    a('ideas-10', '灵感迸发', '收集 10 条灵感', '💡', ideas >= 10),
-    a('vision', '远见', '愿景树达到 3 层', '🗺️', maxDepth >= 3),
-    a('dream', '梦想成真', '达成一个终极目标', '👑', rootDone),
+    a('tasks', '行动派', '⚔️', [1, 10, 100, 500, 1000], tasksDone, (n) => `完成 ${n} 个任务`),
+    a('streak', '习惯成自然', '🔥', [7, 30, 100, 365], data.bestStreak, (n) => `一个习惯连续坚持 ${n} 次`),
+    a('checkins', '日积月累', '📅', [30, 300, 1000, 3000], data.checkins.length, (n) => `累计打卡 ${n} 次`),
+    a('active', '从不缺席', '☀️', [7, 30, 100, 365, 1000], bestActiveStreak(data.xp), (n) => `连续 ${n} 天都有进展`),
+    a('level', '成长', '⭐', [5, 10, 20, 30, 40], level, (n) => `角色达到 Lv.${n}`),
+    a('mood', '心境记录者', '📔', [7, 100, 365, 1000], data.moods.length, (n) => `记录 ${n} 天心情`),
+    a('people', '同行者', '🤝', [5, 20, 50], people.length, (n) => `记下 ${n} 位重要的人`),
+    a('contacts', '常联系', '📞', [10, 100, 500, 1500], contacts, (n) => `联系 ${n} 次`),
+    a('events', '回望', '🕰️', [10, 30, 100], events, (n) => `记录 ${n} 段经历`),
+    a('ideas', '灵感迸发', '💡', [10, 50, 200], ideas, (n) => `收集 ${n} 条灵感`),
+    a('vision', '远见', '🗺️', [3, 5], maxDepth, (n) => `愿景树达到 ${n} 层`),
+    a('dream', '梦想成真', '👑', [1, 3, 5], rootsDone, (n) => `达成 ${n} 个终极目标`),
+    a('self', '认识自己', '🪞', [1], profileFilled, () => '填完角色档案'),
   ]
 }
