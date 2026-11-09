@@ -7,7 +7,7 @@ import { friendly, today, addDays, weekdayLabel } from '@/lib/dates'
 import { bestStreak, contactOverdue, CONTACT_INTERVAL, goalProgress, isLocked, lastContact, streak, TASK_XP } from '@/lib/game'
 import { itemIcon, titleOf } from '@/lib/itemView'
 import { parseBirthday } from '@/lib/people'
-import { typeLabel, type Goal, type Habit, type Item, type LifeEvent, type Note, type Person, type Segment, type Task } from '@/lib/types'
+import { typeLabel, type Goal, type Habit, type Item, type LifeEvent, type Note, type Person, type Segment, type Task, type Asset, type LedgerEntry } from '@/lib/types'
 import Seg from './Seg.vue'
 import AttrPick from './AttrPick.vue'
 import ItemPicker from './ItemPicker.vue'
@@ -16,6 +16,7 @@ import FieldsSection from './FieldsSection.vue'
 import FieldDefEditor from './FieldDefEditor.vue'
 import PlacePicker from './PlacePicker.vue'
 import { lanesFor } from '@/lib/trajectory'
+import { CATEGORIES } from '@/lib/assets'
 
 const data = useData()
 const ui = useUi()
@@ -229,6 +230,17 @@ function setBirthday(part: 'y' | 'm' | 'd', raw: string) {
 
 // ---- event ----
 const event = computed(() => (item.value?.type === 'event' ? (item.value as LifeEvent) : undefined))
+
+// ---- assets & ledger ----
+const asset = computed(() => (item.value?.type === 'asset' ? (item.value as Asset) : undefined))
+const ledgerEntry = computed(() => (item.value?.type === 'ledger' ? (item.value as LedgerEntry) : undefined))
+/** "¥15,000" / "1.5万" → number; empty → null (clears the value). */
+function toNum(raw: string): number | null {
+  const s = raw.trim().replace(/[,，¥\s]/g, '')
+  if (!s) return null
+  const n = s.endsWith('万') ? Number(s.slice(0, -1)) * 1e4 : Number(s)
+  return Number.isFinite(n) ? n : null
+}
 
 // ---- segment (trajectory) ----
 const segment = computed(() => (item.value?.type === 'segment' ? (item.value as Segment) : undefined))
@@ -486,6 +498,96 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             </button>
           </div>
           <div v-if="person.contacts?.length" class="faint small">共联系 {{ new Set(person.contacts).size }} 次。往来记录和备注在「人物」页查看。</div>
+        </template>
+
+        <!-- ASSET -->
+        <template v-if="asset">
+          <div class="field">
+            <label>类别</label>
+            <Seg :model-value="asset.category" :options="CATEGORIES.map((c) => ({ value: c.key, label: c.label, color: c.color }))" @update:model-value="(v) => set({ category: v })" />
+          </div>
+          <div class="field">
+            <label>状态</label>
+            <Seg
+              :model-value="asset.status"
+              :options="[
+                { value: 'owned', label: '拥有' },
+                { value: 'wanted', label: '想要', color: 'var(--gold)' },
+                { value: 'lost', label: '已失去' },
+                { value: 'sold', label: '已卖出' },
+              ]"
+              @update:model-value="(v) => set({ status: v })"
+            />
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>{{ asset.category === 'debt' ? '欠款金额' : asset.status === 'wanted' ? '价格' : '估值' }}（元）</label>
+              <input class="input num" inputmode="decimal" :value="asset.value ?? ''" placeholder="不填也可以" @change="(e) => set({ value: toNum((e.target as HTMLInputElement).value) })" />
+            </div>
+            <div v-if="asset.status === 'wanted'" class="field">
+              <label>已经攒了（元）</label>
+              <input class="input num" inputmode="decimal" :value="asset.saved ?? ''" placeholder="0" @change="(e) => set({ saved: toNum((e.target as HTMLInputElement).value) })" />
+            </div>
+            <div v-else class="field">
+              <label>获得日期</label>
+              <input type="date" class="input" :value="asset.acquired ?? ''" @change="(e) => set({ acquired: (e.target as HTMLInputElement).value || null })" />
+            </div>
+          </div>
+          <div class="field">
+            <label>为了哪个目标（可选）</label>
+            <select class="input" :value="asset.goalId ?? ''" @change="(e) => set({ goalId: (e.target as HTMLSelectElement).value || null })">
+              <option value="">不关联目标</option>
+              <option v-for="g in data.goals" :key="g.id" :value="g.id">{{ titleOf(g) }}</option>
+            </select>
+          </div>
+        </template>
+
+        <!-- LEDGER -->
+        <template v-if="ledgerEntry">
+          <div class="field">
+            <label>收入还是支出</label>
+            <Seg
+              :model-value="ledgerEntry.flow"
+              :options="[
+                { value: 'income', label: '收入', color: 'var(--ok)' },
+                { value: 'expense', label: '支出', color: 'var(--danger)' },
+              ]"
+              @update:model-value="(v) => set({ flow: v })"
+            />
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>金额（元）</label>
+              <input class="input num" inputmode="decimal" :value="ledgerEntry.amount || ''" placeholder="0" @change="(e) => set({ amount: toNum((e.target as HTMLInputElement).value) ?? 0 })" />
+            </div>
+            <div class="field">
+              <label>重复</label>
+              <Seg
+                :model-value="ledgerEntry.repeat"
+                :options="[
+                  { value: 'none', label: '一次' },
+                  { value: 'week', label: '每周' },
+                  { value: 'month', label: '每月' },
+                  { value: 'year', label: '每年' },
+                ]"
+                @update:model-value="(v) => set({ repeat: v })"
+              />
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>{{ ledgerEntry.repeat === 'none' ? '日期' : '从哪天开始' }}</label>
+              <input type="date" class="input" :value="ledgerEntry.date" @change="(e) => set({ date: (e.target as HTMLInputElement).value || today() })" />
+            </div>
+            <div v-if="ledgerEntry.repeat !== 'none'" class="field">
+              <label>到哪天结束（可选）</label>
+              <input type="date" class="input" :value="ledgerEntry.until ?? ''" @change="(e) => set({ until: (e.target as HTMLInputElement).value || null })" />
+            </div>
+          </div>
+          <div class="field">
+            <label>分类（可选）</label>
+            <input class="input" :value="val('category')" placeholder="比如 工资、房租、吃饭、订阅" @input="(e) => text('category', (e.target as HTMLInputElement).value)" />
+          </div>
         </template>
 
         <!-- SEGMENT (trajectory) -->

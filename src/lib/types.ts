@@ -127,6 +127,8 @@ export interface Asset extends Base {
   status: AssetStatus
   /** Estimated value in yuan (debts: the amount owed). */
   value?: number
+  /** For wishlist items: how much is already put aside for it. */
+  saved?: number
   acquired?: string
   goalId?: string
 }

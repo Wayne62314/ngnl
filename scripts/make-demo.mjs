@@ -307,6 +307,51 @@ for (const e of items.filter((i) => i.type === 'event')) {
 }
 item('event', add(START, 60), { title: '东京出差一周', date: add(START, 60), kind: 'event', feeling: 'good', place: TK })
 
+// ---------------------------------------------------------------- custom fields, assets, ledger
+const fieldDef = (title, kind, unit) => item('field', START, { title, kind, ...(unit ? { unit } : {}) })
+const fLife = fieldDef('使用年限', 'number', '年')
+const fPrice = fieldDef('购入价格', 'money')
+const fSave = fieldDef('每次省下', 'money')
+const fIncome = fieldDef('每次收入', 'money')
+const asset = (title, category, status, value, x = {}) => item('asset', START, { title, category, status, ...(value ? { value } : {}), ...x })
+asset('活期存款', 'finance', 'owned', 60000)
+asset('指数基金定投', 'finance', 'owned', 45000, { goalId: gMoney.id })
+asset('MacBook Pro 14', 'item', 'owned', 11000, { acquired: '2023-06-18', fields: { [fLife.id]: 5, [fPrice.id]: 15000 } })
+asset('索尼相机', 'item', 'owned', 6000, { acquired: '2024-09-01', fields: { [fLife.id]: 6, [fPrice.id]: 8000 } })
+asset('公路车', 'item', 'owned', 3500, { acquired: add(START, 35), fields: { [fLife.id]: 8, [fPrice.id]: 5000 } })
+asset('机械键盘等杂物', 'item', 'owned', 4000)
+asset('计算机本科学位', 'cred', 'owned', 0, { acquired: '2019-06-28' })
+asset('半马完赛证书', 'cred', 'owned', 0, { acquired: add(START, 160) })
+asset('Godot 社区 1.2k 关注', 'fame', 'owned', 0)
+asset('《灯塔守夜人》Demo', 'fame', 'owned', 0, { acquired: add(START, 290) })
+asset('林夏画的肖像', 'item', 'owned', 0, { acquired: '2024-06-18' })
+asset('信用卡分期', 'debt', 'owned', 5000)
+const switch2 = asset('Switch 2', 'item', 'wanted', 2600, { saved: 1200 })
+link(switch2.id, byName['林夏'].id)
+asset('带爸妈去日本', 'item', 'wanted', 30000, { saved: 10500, goalId: gTrip.id })
+asset('雅思 7 分证书', 'cred', 'wanted', 0, { goalId: gIelts.id })
+const led = (title, flow, amount, repeat, date, x = {}) => item('ledger', date < START ? START : date, { title, flow, amount, repeat, date, ...x })
+led('工资', 'income', 22000, 'month', '2022-03-10', { category: '工资' })
+led('房租', 'expense', 4500, 'month', '2022-03-01', { category: '居住' })
+led('吃饭', 'expense', 3200, 'month', '2022-03-01', { category: '吃饭' })
+led('交通通讯', 'expense', 600, 'month', '2022-03-01', { category: '交通' })
+led('订阅（音乐、云盘、AI）', 'expense', 260, 'month', '2024-01-01', { category: '订阅' })
+led('给爸妈的生活费', 'expense', 1500, 'month', '2023-01-01', { category: '家人' })
+led('周末摆摊', 'income', 150, 'week', add(START, 300), { category: '副业', fields: { [fIncome.id]: 150 } })
+led('年终奖', 'income', 30000, 'none', add(TODAY, -300).slice(0, 7) + '-20', { category: '工资' })
+led('买公路车', 'expense', 5000, 'none', add(START, 35), { category: '运动' })
+led('厦门旅行', 'expense', 4200, 'none', add(START, 130), { category: '旅行' })
+// A habit that saves money, for the simulation template.
+const noTakeout = item('habit', add(START, 200), { title: '不点外卖', attr: 'body', days: [1, 2, 3, 4, 5], fields: { [fSave.id]: 25 } })
+for (let k = add(START, 200); k < TODAY; k = add(k, 1)) if ([1, 2, 3, 4, 5].includes(wd(k)) && chance(0.8)) checkins.push({ habitId: noTakeout.id, date: k })
+// Net worth recorded monthly, rising over the year.
+const netWorthHist = {}
+for (let i = 11; i >= 0; i--) {
+  const d = new Date(TODAY)
+  d.setMonth(d.getMonth() - i)
+  netWorthHist[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`] = 82000 + (11 - i) * 3800 + Math.round(rnd() * 2000)
+}
+
 // ---------------------------------------------------------------- save
 const snapshot = {
   version: 1,
@@ -314,11 +359,11 @@ const snapshot = {
   links: [...new Map(links.map((l) => [l.join(), l])).values()],
   checkins,
   moods,
-  profile: { name: '阿岚', background: '深圳的程序员，五年工作经验，正在业余开发第一款独立游戏', strengths: '写代码、耐心、学得快', weaknesses: '拖延、熬夜、不擅长拒绝', interests: '独立游戏、跑步、桌游、摄影' },
+  profile: { netWorth: netWorthHist, name: '阿岚', background: '深圳的程序员，五年工作经验，正在业余开发第一款独立游戏', strengths: '写代码、耐心、学得快', weaknesses: '拖延、熬夜、不擅长拒绝', interests: '独立游戏、跑步、桌游、摄影' },
 }
 writeFileSync(OUT, JSON.stringify(snapshot))
 const count = (t) => items.filter((i) => i.type === t).length
 console.log(`${OUT}: ${START} → ${TODAY}`)
-console.log(`segments ${count('segment')}, `)
+console.log(`segments ${count('segment')}, fields ${count('field')}, assets ${count('asset')}, ledger ${count('ledger')}`)
 console.log(`tasks ${count('task')}, habits ${count('habit')}, goals ${count('goal')}, people ${count('person')}, events ${count('event')}, notes ${count('note')}`)
 console.log(`links ${snapshot.links.length}, checkins ${checkins.length}, moods ${moods.length}, contacts ${people.reduce((s, p) => s + (p.contacts?.length ?? 0), 0)}`)
