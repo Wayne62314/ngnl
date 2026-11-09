@@ -10,6 +10,17 @@ export interface Toast {
   attr?: Attr
 }
 
+/** A question shown in the confirmation dialog; `resolve` answers it. */
+export interface ConfirmRequest {
+  title: string
+  message?: string
+  /** Bullet lines, e.g. what will change. */
+  details?: string[]
+  confirmText?: string
+  danger?: boolean
+  resolve: (ok: boolean) => void
+}
+
 /** A "+25" that floats up from where the user just clicked. */
 export interface Floater {
   id: number
@@ -35,6 +46,21 @@ export const useUi = defineStore('ui', () => {
   const floaters = ref<Floater[]>([])
   /** Set to show the full-screen level-up celebration. */
   const levelUp = ref<{ level: number; rank?: string } | null>(null)
+  const confirmRequest = ref<ConfirmRequest | null>(null)
+
+  /** Asks the user to confirm an important change or deletion. Resolves true only on an explicit yes. */
+  function confirm(opts: Omit<ConfirmRequest, 'resolve'>): Promise<boolean> {
+    confirmRequest.value?.resolve(false)
+    return new Promise((resolve) => {
+      confirmRequest.value = {
+        ...opts,
+        resolve: (ok) => {
+          confirmRequest.value = null
+          resolve(ok)
+        },
+      }
+    })
+  }
 
   const open = (id: string) => {
     if (drawer.value.at(-1) !== id) drawer.value.push(id)
@@ -58,5 +84,5 @@ export const useUi = defineStore('ui', () => {
     } else toast(text, 'xp', a.color, attr)
   }
 
-  return { drawer, paletteOpen, toasts, floaters, levelUp, open, back, close, toast, xp }
+  return { drawer, paletteOpen, toasts, floaters, levelUp, confirmRequest, confirm, open, back, close, toast, xp }
 })

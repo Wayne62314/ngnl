@@ -57,6 +57,22 @@ const daysText = (h: Habit) => {
   return '每周' + [1, 2, 3, 4, 5, 6, 0].filter((d) => s.includes(d)).map(weekdayLabel).join('、')
 }
 
+/** Today's check-in is one tap; changing a past day changes streaks and XP, so it asks first. */
+async function toggleDay(h: Habit, k: string) {
+  if (k > t) return
+  const done = data.doneDates(h.id).has(k)
+  if (k !== t) {
+    const ok = await ui.confirm({
+      title: done ? `取消 ${k} 的打卡？` : `给 ${k} 补打卡？`,
+      message: `「${titleOf(h)}」${done ? '这一天的打卡会被删除，经验 −5' : '这一天会记为已完成，经验 +5'}，连续天数也会重新计算。`,
+      confirmText: done ? '取消打卡' : '补打卡',
+      danger: done,
+    })
+    if (!ok) return
+  }
+  await data.toggleCheckin(h.id, k)
+}
+
 async function add() {
   const h = await data.create('habit')
   if (h) ui.open(h.id)
@@ -93,7 +109,7 @@ async function add() {
             class="day"
             :class="{ sched: isScheduled(h, k), today: k === t }"
             :title="k"
-            @click="data.toggleCheckin(h.id, k)"
+            @click="toggleDay(h, k)"
           >
             <span class="wd">{{ k === t ? '今' : weekdayLabel(weekday(k)) }}</span>
             <span class="check round" :class="{ on: data.doneDates(h.id).has(k) }"><Check /></span>
@@ -102,7 +118,16 @@ async function add() {
 
         <div class="heat" aria-label="近 18 周打卡">
           <div v-for="(col, i) in heat(h)" :key="i" class="hcol">
-            <span v-for="c in col" :key="c.k" class="cell" :class="{ done: c.done, off: !c.sched, future: c.future }" :title="c.k" />
+            <button
+              v-for="c in col"
+              :key="c.k"
+              class="cell"
+              :class="{ done: c.done, off: !c.sched, future: c.future }"
+              :title="`${c.k}${c.done ? ' 已打卡' : ''}`"
+              :aria-label="`${c.k} ${c.done ? '已打卡，点击取消' : '未打卡，点击补打卡'}`"
+              :disabled="c.future"
+              @click="toggleDay(h, c.k)"
+            />
           </div>
         </div>
       </article>
@@ -214,6 +239,16 @@ async function add() {
   height: 11px;
   border-radius: 3px;
   background: var(--sunken);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.cell:not(:disabled):hover {
+  outline: 1.5px solid var(--c);
+  outline-offset: 1px;
+}
+.cell:disabled {
+  cursor: default;
 }
 .cell.off {
   background: transparent;

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api } from '@/lib/api'
-import { isPersisted, onExternalChange, patchMeta, readMeta, requestPersistence, type Meta } from '@/lib/storage'
+import { isPersisted, onExternalChange, patchMeta, readMeta, requestPersistence, resetMeta, type Meta } from '@/lib/storage'
 import { today } from '@/lib/dates'
 import { attrLevel, attrTotals, characterLevel, rankOf, xpEntries } from '@/lib/game'
 import { attrOf } from '@/lib/types'
@@ -59,7 +59,7 @@ export const useData = defineStore('data', () => {
   const doneDates = (habitId: string) => checkinSets.value.get(habitId) ?? new Set<string>()
 
   const xp = computed(() => xpEntries(items.value, checkins.value, moods.value))
-  const totals = computed(() => attrTotals(xp.value))
+  const totals = computed(() => attrTotals(xp.value, profile.value.baseLevels))
   const totalXp = computed(() => xp.value.reduce((s, e) => s + e.xp, 0))
   const level = computed(() => characterLevel(totalXp.value))
   const moodOf = (date: string) => moods.value.find((m) => m.date === date)
@@ -269,11 +269,21 @@ export const useData = defineStore('data', () => {
     void protect()
   }
 
+  /**
+   * Deletes the save: everything becomes empty. Done as a "restore" of an empty
+   * backup, so if sync is still on, the next sync clears the other devices too.
+   */
+  async function wipe() {
+    apply(await api.import({ version: 1, items: [], links: [], checkins: [], moods: [], profile: {} }))
+    await resetMeta()
+    meta.value = {}
+  }
+
   return {
     items, links, checkins, moods, profile, loaded, loadError, meta, persisted,
     byId, tasks, habits, goals, people, events, notes, linked, doneDates,
     xp, totals, totalXp, level, moodOf,
-    init, load, protect, exportBackup, snoozeBackup, create, update, remove, link, unlink, toggleCheckin, setMood, contact, logContact, removeContact, saveProfile, importSnapshot,
+    init, load, protect, exportBackup, snoozeBackup, create, update, remove, link, unlink, toggleCheckin, setMood, contact, logContact, removeContact, saveProfile, importSnapshot, wipe,
   }
 })
 

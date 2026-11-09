@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { addDays, weekday } from './dates'
-import { achievements, activeStreak, attrTotals, bestActiveStreak, bestStreak, rankOf, characterLevel, contactOverdue, goalProgress, isLocked, levelFor, streak, taskBucket, xpEntries } from './game'
+import { achievements, activeStreak, attrLevel, attrTotals, attrXpForLevel, bestActiveStreak, bestStreak, rankOf, characterLevel, contactOverdue, goalProgress, isLocked, levelFor, streak, taskBucket, xpEntries } from './game'
 import type { Goal, Habit, Item, Person, Task } from './types'
 
 const base = { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', title: 'x' }
@@ -122,5 +122,21 @@ describe('achievements', () => {
     expect(t.tier).toBe(2)
     expect(t.value).toBe(12)
     expect(list.find((x) => x.key === 'self')!.tier).toBe(0)
+  })
+})
+
+describe('starting attribute levels', () => {
+  it('lifts an attribute to the chosen level without touching earned XP', () => {
+    expect(attrXpForLevel(1)).toBe(0)
+    expect(attrLevel(attrXpForLevel(8)).level).toBe(8)
+    expect(attrLevel(attrXpForLevel(8)).into).toBe(0)
+    const e = [{ attr: 'mind' as const, xp: 10, date: '2026-11-09' }]
+    const t = attrTotals(e, { mind: 8, body: 3 })
+    expect(t.mind).toBe(attrXpForLevel(8) + 10)
+    expect(attrLevel(t.body).level).toBe(3)
+    expect(attrLevel(t.craft).level).toBe(1)
+    // Out-of-range values are clamped.
+    expect(attrLevel(attrTotals([], { mind: 999 as number }).mind).level).toBe(50)
+    expect(attrTotals([], { mind: -3 }).mind).toBe(0)
   })
 })

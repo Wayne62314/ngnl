@@ -94,6 +94,7 @@ const reachOut = computed(() =>
 // ---- onboarding ----
 const steps = computed(() => [
   { done: !!data.profile.name?.trim(), label: '给你的角色起个名字', to: '/character' },
+  { done: !!data.profile.baseLevels, label: '设定六维初始等级', to: '/character' },
   { done: data.habits.length > 0, label: '养成第一个习惯', to: '/habits' },
   { done: data.goals.some((g) => !g.parentId), label: '立下一个终极目标', to: '/goals' },
   { done: data.people.length > 0, label: '记下一位重要的人', to: '/people' },

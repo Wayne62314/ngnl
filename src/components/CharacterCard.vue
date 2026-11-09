@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Camera, RotateCcw } from 'lucide-vue-next'
+import { Camera, PenLine, RotateCcw } from 'lucide-vue-next'
 import { useData } from '@/stores/data'
 import { attrLevel, rankOf } from '@/lib/game'
 import { ATTRS } from '@/lib/types'
@@ -21,6 +21,31 @@ const src = computed(() => portraitSrc(data.profile.portrait, top.value))
 const rank = computed(() => rankOf(data.level.level))
 const rare = computed(() => rarity(data.level.level))
 const pct = computed(() => Math.round((data.level.into / data.level.need) * 100))
+
+// ---- rename in place: click the name or the title on the card ----
+const editing = ref<null | 'name' | 'title'>(null)
+const draft = ref('')
+const editor = ref<HTMLInputElement>()
+function edit(field: 'name' | 'title') {
+  editing.value = field
+  draft.value = (field === 'name' ? data.profile.name : data.profile.title) ?? ''
+  nextTick(() => {
+    editor.value?.focus()
+    editor.value?.select()
+  })
+}
+async function commit() {
+  const field = editing.value
+  if (!field) return
+  editing.value = null
+  const v = draft.value.trim().slice(0, field === 'name' ? 16 : 24)
+  if (v === ((field === 'name' ? data.profile.name : data.profile.title) ?? '')) return
+  const p = { ...data.profile }
+  if (v) p[field] = v
+  else delete p[field]
+  await data.saveProfile(p)
+}
+const cancel = () => (editing.value = null)
 
 const profileLines = computed(() =>
   [
@@ -48,8 +73,36 @@ const profileLines = computed(() =>
           </figure>
           <div class="body">
             <div class="name-row">
-              <span class="name serif">{{ data.profile.name || '无名旅人' }}</span>
-              <span class="title ellipsis">{{ data.profile.title || rank.title }}</span>
+              <input
+                v-if="editing === 'name'"
+                ref="editor"
+                v-model="draft"
+                class="name serif name-input"
+                maxlength="16"
+                placeholder="角色名"
+                aria-label="角色名"
+                @keydown.enter.prevent="commit"
+                @keydown.esc.stop.prevent="cancel"
+                @blur="commit"
+              />
+              <button v-else class="name serif editable" title="点击改名" @click.stop="edit('name')">
+                {{ data.profile.name || '无名旅人' }}<PenLine :size="13" class="pen" />
+              </button>
+              <input
+                v-if="editing === 'title'"
+                ref="editor"
+                v-model="draft"
+                class="title title-input"
+                maxlength="24"
+                :placeholder="rank.title"
+                aria-label="称号（留空则显示等级称号）"
+                @keydown.enter.prevent="commit"
+                @keydown.esc.stop.prevent="cancel"
+                @blur="commit"
+              />
+              <button v-else class="title ellipsis editable" title="点击修改称号（留空则显示等级称号）" @click.stop="edit('title')">
+                {{ data.profile.title || rank.title }}
+              </button>
             </div>
             <div class="attrs">
               <span v-for="a in attrs" :key="a.key" class="attr" :style="{ '--c': a.color }" :title="a.hint">
@@ -238,6 +291,60 @@ const profileLines = computed(() =>
   font-size: 12px;
   color: rgba(242, 238, 230, 0.6);
   min-width: 0;
+}
+.editable {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: text;
+  text-align: left;
+  color: inherit;
+  border-radius: 6px;
+}
+.name.editable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #f2eee6;
+}
+.title.editable {
+  color: rgba(242, 238, 230, 0.6);
+}
+.editable:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.pen {
+  opacity: 0;
+  color: #f0c869;
+  transition: opacity 0.15s;
+}
+.editable:hover .pen,
+.editable:focus-visible .pen {
+  opacity: 1;
+}
+@media (hover: none) {
+  .pen {
+    opacity: 0.6;
+  }
+}
+.name-input,
+.title-input {
+  min-width: 0;
+  border: none;
+  outline: none;
+  border-radius: 6px;
+  padding: 0 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #f2eee6;
+  box-shadow: inset 0 0 0 1.5px #f0c869;
+}
+.name-input {
+  flex: 1;
+  width: 100%;
+}
+.title-input {
+  width: 45%;
+  height: 24px;
 }
 .attrs {
   display: grid;

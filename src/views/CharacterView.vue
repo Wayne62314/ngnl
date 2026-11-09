@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useData } from '@/stores/data'
 import { addDays, fromKey, today } from '@/lib/dates'
 import { achievements, attrLevel, bestStreak, rankOf, TIER_NAMES } from '@/lib/game'
 import { ATTR_ICON } from '@/lib/attrIcons'
 import { ATTRS, MOODS, type Profile } from '@/lib/types'
 import CharacterCard from '@/components/CharacterCard.vue'
+import BaseLevelsDialog from '@/components/BaseLevelsDialog.vue'
 import XpBar from '@/components/XpBar.vue'
 import Radar from '@/components/Radar.vue'
 import YearHeatmap from '@/components/YearHeatmap.vue'
@@ -14,16 +15,27 @@ const data = useData()
 const t = today()
 
 // ---- profile, saved on blur ----
-const form = reactive<Profile>({ ...data.profile })
+/** The text fields edited on this page; other profile data (portrait, starting levels) is kept as is. */
+type TextField = 'name' | 'title' | 'background' | 'strengths' | 'weaknesses' | 'interests'
+const TEXT: TextField[] = ['name', 'title', 'background', 'strengths', 'weaknesses', 'interests']
+const pickText = (p: Profile) => Object.fromEntries(TEXT.map((k) => [k, p[k] ?? ''])) as Record<TextField, string>
+const form = reactive(pickText(data.profile))
 watch(
   () => data.profile,
-  (p) => Object.assign(form, p),
+  (p) => Object.assign(form, pickText(p)),
 )
 function save() {
-  const clean = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, (v ?? '').trim()]).filter(([, v]) => v))
-  if (JSON.stringify(clean) !== JSON.stringify(data.profile)) data.saveProfile(clean)
+  const next: Profile = { ...data.profile }
+  let changed = false
+  for (const k of TEXT) {
+    const v = form[k].trim()
+    if (v !== (data.profile[k] ?? '')) changed = true
+    if (v) next[k] = v
+    else delete next[k]
+  }
+  if (changed) data.saveProfile(next)
 }
-const FIELDS: { key: keyof Profile; label: string; ph: string }[] = [
+const FIELDS: { key: TextField; label: string; ph: string }[] = [
   { key: 'background', label: '背景', ph: '你从哪里来，现在在做什么' },
   { key: 'strengths', label: '特长', ph: '你擅长什么' },
   { key: 'weaknesses', label: '弱点', ph: '你想改进什么' },
@@ -37,6 +49,12 @@ const attrs = computed(() =>
 const radar = computed(() => attrs.value.map((a) => ({ label: a.label, value: a.info.level, color: a.color })))
 const radarMax = computed(() => Math.max(5, ...attrs.value.map((a) => a.info.level)))
 const rank = computed(() => rankOf(data.level.level))
+const editingBase = ref(false)
+const baseSummary = computed(() =>
+  ATTRS.filter((a) => (data.profile.baseLevels?.[a.key] ?? 1) > 1)
+    .map((a) => `${a.label} ${data.profile.baseLevels![a.key]}`)
+    .join('、'),
+)
 const top = computed(() => [...attrs.value].sort((a, b) => b.info.total - a.info.total)[0])
 
 // ---- stats ----
@@ -95,7 +113,12 @@ const TIER_COLORS = ['#b87333', '#9aa4b1', 'var(--gold-2)', '#6ad1e3', '#c36bff'
 
     <div class="grid">
       <section class="card card-pad">
-        <h2 class="section-title">六维属性</h2>
+        <h2 class="section-title">
+          六维属性
+          <button class="btn ghost sm base-btn" @click="editingBase = true">
+            {{ data.profile.baseLevels ? '修改初始等级' : '设置初始等级' }}
+          </button>
+        </h2>
         <div class="radar-wrap"><Radar :values="radar" :max="radarMax" /></div>
         <div class="attrs">
           <div v-for="a in attrs" :key="a.key" class="attr" :title="a.hint">
@@ -104,7 +127,10 @@ const TIER_COLORS = ['#b87333', '#9aa4b1', 'var(--gold-2)', '#6ad1e3', '#c36bff'
             <span class="num faint">Lv.{{ a.info.level }}</span>
           </div>
         </div>
-        <p class="faint small hint">属性来自你做的事：每个任务和习惯都属于一种属性，完成就会为它积累经验。</p>
+        <p class="faint small hint">
+          属性来自你做的事：每个任务和习惯都属于一种属性，完成就会为它积累经验。<template v-if="data.profile.baseLevels">已设置初始等级（{{ baseSummary }}）。</template>
+        </p>
+        <BaseLevelsDialog v-if="editingBase" @close="editingBase = false" />
       </section>
 
       <section class="card card-pad">
@@ -350,6 +376,11 @@ const TIER_COLORS = ['#b87333', '#9aa4b1', 'var(--gold-2)', '#6ad1e3', '#c36bff'
 .m5 { background: var(--gold); }
 .strip-axis {
   margin-top: 6px;
+}
+.base-btn {
+  margin-left: auto;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 .year-card {
   margin-bottom: 16px;

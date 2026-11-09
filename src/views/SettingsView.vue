@@ -3,14 +3,17 @@ import { computed, ref } from 'vue'
 import { Download, ShieldCheck, ShieldAlert, Upload } from 'lucide-vue-next'
 import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
+import { useSync } from '@/stores/sync'
 import { CONTACT_XP, HABIT_XP, MOOD_XP, TASK_XP } from '@/lib/game'
 import Seg from '@/components/Seg.vue'
 import AiAssistantSection from '@/components/AiAssistantSection.vue'
 import SyncSection from '@/components/SyncSection.vue'
 import InstallSection from '@/components/InstallSection.vue'
+import DeleteSave from '@/components/DeleteSave.vue'
 
 const data = useData()
 const ui = useUi()
+const sync = useSync()
 
 const readTheme = (): 'system' | 'light' | 'dark' => {
   try {
@@ -32,25 +35,32 @@ function setTheme(t: 'system' | 'light' | 'dark') {
 }
 
 const file = ref<HTMLInputElement>()
-const confirming = ref<unknown>(null)
 async function pick(e: Event) {
   const f = (e.target as HTMLInputElement).files?.[0]
   ;(e.target as HTMLInputElement).value = ''
   if (!f) return
+  let backup: unknown
   try {
-    confirming.value = JSON.parse(await f.text())
+    backup = JSON.parse(await f.text())
   } catch {
     ui.toast('这不是有效的备份文件', 'error')
+    return
   }
-}
-async function doImport() {
+  const n = Array.isArray((backup as { items?: unknown[] })?.items) ? (backup as { items: unknown[] }).items.length : 0
+  const ok = await ui.confirm({
+    title: '用备份替换当前所有数据？',
+    message: `备份「${f.name}」里有 ${n} 个条目。当前的 ${data.items.length} 个条目会被全部替换，无法撤销。建议先导出一份当前数据。`,
+    details: sync.enabled ? ['正在多设备同步：其他设备同步后也会换成这份备份'] : undefined,
+    confirmText: '替换',
+    danger: true,
+  })
+  if (!ok) return
   try {
-    await data.importSnapshot(confirming.value)
+    await data.importSnapshot(backup)
     ui.toast('已从备份恢复')
-  } catch (e) {
-    ui.toast((e as Error).message, 'error')
+  } catch (err) {
+    ui.toast((err as Error).message, 'error')
   }
-  confirming.value = null
 }
 const lastBackup = computed(() => {
   const t = data.meta.lastBackupAt
@@ -61,10 +71,6 @@ const lastBackup = computed(() => {
 async function protect() {
   if (await data.protect()) ui.toast('浏览器已同意保护你的数据')
   else ui.toast('浏览器暂时没有同意。安装为应用或经常使用后通常会自动获得保护', 'error')
-}
-const counts = () => {
-  const s = confirming.value as { items?: unknown[] }
-  return Array.isArray(s?.items) ? s.items.length : 0
 }
 </script>
 
@@ -103,14 +109,7 @@ const counts = () => {
         <button class="btn" @click="file?.click()"><Upload />从备份恢复</button>
         <input ref="file" type="file" accept="application/json,.json" hidden @change="pick" />
       </div>
-      <div v-if="confirming" class="confirm">
-        <b>用备份替换当前所有数据？</b>
-        <p class="muted">备份里有 {{ counts() }} 个条目。当前的 {{ data.items.length }} 个条目会被覆盖，无法撤销。建议先导出一份当前数据。</p>
-        <div class="row">
-          <button class="btn primary" @click="doImport">替换</button>
-          <button class="btn ghost" @click="confirming = null">取消</button>
-        </div>
-      </div>
+      <DeleteSave />
     </section>
 
     <SyncSection />

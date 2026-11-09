@@ -104,6 +104,8 @@ export interface Profile {
   interests?: string
   /** "preset:<key>" or an image data URL (see portraits.ts). */
   portrait?: string
+  /** Starting level per attribute (who you already were before using the app). Missing = 1. */
+  baseLevels?: Partial<Record<Attr, number>>
 }
 
 export interface Snapshot {

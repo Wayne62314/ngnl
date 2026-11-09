@@ -37,6 +37,20 @@ async function upload(e: Event) {
     busy.value = false
   }
 }
+async function reset() {
+  const custom = current()?.startsWith('data:')
+  if (custom) {
+    const ok = await ui.confirm({
+      title: '移除当前立绘？',
+      message: '你上传或 AI 画的这张立绘会被删除，卡片换回默认角色。',
+      confirmText: '移除',
+      danger: true,
+    })
+    if (!ok) return
+  }
+  await save(undefined)
+  emit('close')
+}
 async function pick(key: string) {
   await save('preset:' + key)
   emit('close')
@@ -97,7 +111,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </section>
 
         <footer v-if="current()">
-          <button class="btn ghost sm" @click="save(undefined).then(() => emit('close'))"><Trash2 />恢复默认（按最强属性自动选）</button>
+          <button class="btn ghost sm" @click="reset"><Trash2 />恢复默认（按最强属性自动选）</button>
         </footer>
       </div>
     </div>

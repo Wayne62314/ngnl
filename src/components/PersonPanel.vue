@@ -48,6 +48,16 @@ async function record() {
   date.value = t
 }
 
+async function removeEntry(date: string, note: string) {
+  const ok = await ui.confirm({
+    title: `删除 ${date} 的往来记录？`,
+    message: note ? `「${note}」\n删除后对应的 5 点社交经验也会扣除。` : '删除后对应的 5 点社交经验也会扣除。',
+    confirmText: '删除',
+    danger: true,
+  })
+  if (ok) await data.removeContact(p.value.id, date)
+}
+
 const picking = ref(false)
 function pickKnown(id: string) {
   data.link(p.value.id, id)
@@ -122,7 +132,7 @@ const emit = defineEmits<{ select: [id: string] }>()
             <div class="when">{{ friendly(e.date) }}<span v-if="friendly(e.date) !== e.date" class="faint"> · {{ e.date }}</span></div>
             <div v-if="e.note" class="what">{{ e.note }}</div>
           </div>
-          <button class="btn ghost sm icon del" title="删除这条记录" @click="data.removeContact(p.id, e.date)"><Trash2 /></button>
+          <button class="btn ghost sm icon del" title="删除这条记录" @click="removeEntry(e.date, e.note)"><Trash2 /></button>
         </li>
       </ol>
       <button v-if="log.length > 5" class="btn ghost sm more" @click="showAll = !showAll">

@@ -77,7 +77,15 @@ async function join(code: string) {
   }, '已加入同步，数据已合并')
 }
 
-const confirmDelete = ref(false)
+async function deleteCloud() {
+  const ok = await ui.confirm({
+    title: '关闭同步并删除云端数据？',
+    message: '云端的加密副本会被删除，所有设备都会停止同步。每台设备上的本地数据都会保留。',
+    confirmText: '删除云端数据',
+    danger: true,
+  })
+  if (ok) await run(() => sync.disable(true), '云端数据已删除')
+}
 
 const ago = computed(() => {
   const t = sync.lastSyncAt
@@ -172,12 +180,7 @@ setInterval(() => nowTick.value++, 30_000)
 
       <div class="row off">
         <button class="btn ghost sm" :disabled="busy" @click="run(() => sync.disable(false), '这台设备已停止同步')">在这台设备上关闭同步</button>
-        <button v-if="!confirmDelete" class="btn ghost sm danger" @click="confirmDelete = true">关闭并删除云端数据</button>
-        <span v-else class="row">
-          <span class="small">所有设备都会停止同步（本机数据保留）。</span>
-          <button class="btn danger sm" :disabled="busy" @click="run(() => sync.disable(true), '云端数据已删除')">确认删除</button>
-          <button class="btn ghost sm" @click="confirmDelete = false">取消</button>
-        </span>
+        <button class="btn ghost sm danger" :disabled="busy" @click="deleteCloud">关闭并删除云端数据</button>
       </div>
     </template>
 

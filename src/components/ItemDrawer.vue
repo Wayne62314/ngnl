@@ -59,7 +59,6 @@ function cleanupBlank(it: Item | undefined) {
 watch(id, (_n, old) => {
   flush()
   picking.value = null
-  confirmDelete.value = false
   if (old && !ui.drawer.includes(old)) cleanupBlank(data.byId.get(old))
   nextTick(() => {
     fit(titleEl.value)
@@ -86,18 +85,44 @@ function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape' && !picking.value) close()
 }
 
-const confirmDelete = ref(false)
-async function del() {
-  if (!item.value) return
-  if (!confirmDelete.value) {
-    confirmDelete.value = true
-    return
+/** What else disappears with an item, so the confirmation can say so. */
+function deleteDetails(it: Item): string[] {
+  const out: string[] = []
+  const links = data.linked(it.id).length
+  if (it.type === 'task' && it.status === 'done') out.push(`它带来的 ${TASK_XP[it.difficulty] ?? 0} 点经验会被扣除`)
+  if (it.type === 'habit') {
+    const n = data.doneDates(it.id).size
+    if (n) out.push(`${n} 次打卡记录会一起删除（共 ${n * 5} 点经验）`)
   }
-  const x = item.value.id
+  if (it.type === 'person') {
+    const n = new Set((it as Person).contacts ?? []).size
+    if (n) out.push(`${n} 条往来记录会一起删除`)
+  }
+  if (it.type === 'goal') {
+    const kids = data.goals.filter((g) => g.parentId === it.id).length
+    const tasks = data.tasks.filter((t) => t.goalId === it.id).length
+    if (kids) out.push(`${kids} 个子目标会变成独立的目标（不会删除）`)
+    if (tasks) out.push(`${tasks} 个任务会解除与它的挂靠（不会删除）`)
+  }
+  if (links) out.push(`与其他条目的 ${links} 条关联会移除`)
+  return out
+}
+
+async function del() {
+  const it = item.value
+  if (!it) return
+  const ok = await ui.confirm({
+    title: `删除${typeLabel(it)}「${titleOf(it)}」？`,
+    message: '删除后无法撤销（可以从之前导出的备份恢复）。',
+    details: deleteDetails(it),
+    confirmText: '删除',
+    danger: true,
+  })
+  if (!ok || item.value?.id !== it.id) return
   draft.value = {}
   pendingId = undefined
   ui.back()
-  await data.remove(x)
+  await data.remove(it.id)
 }
 
 // ---- links ----
@@ -226,8 +251,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <button v-if="ui.drawer.length > 1" class="btn ghost sm icon" title="返回" @click="ui.back()"><ArrowLeft /></button>
         <span class="chip"><component :is="itemIcon(item)" />{{ typeLabel(item) }}</span>
         <span class="grow" />
-        <button class="btn ghost sm" :class="{ danger: confirmDelete }" @click="del" @blur="confirmDelete = false">
-          <Trash2 />{{ confirmDelete ? '确认删除' : '' }}
+        <button class="btn ghost sm" title="删除" aria-label="删除" @click="del">
+          <Trash2 />
         </button>
         <button class="btn ghost sm icon" title="关闭 (Esc)" @click="close"><X /></button>
       </header>

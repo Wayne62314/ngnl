@@ -102,7 +102,8 @@ export function runTool(data: Data, name: string, a: Args): unknown {
         today: `${d} 星期${weekdayLabel(new Date().getDay())}`,
         name: data.profile.name,
         title: data.profile.title || rankOf(data.level.level).title,
-        profile: data.profile,
+        // The portrait can be a large image; tell the assistant what it is instead of sending it.
+        profile: { ...data.profile, portrait: data.profile.portrait ? (data.profile.portrait.startsWith('preset:') ? data.profile.portrait : 'custom image') : undefined },
         level: data.level.level,
         xp: { intoLevel: data.level.into, neededForNext: data.level.need, total: data.totalXp, today: data.xp.filter((e) => e.date === d).reduce((s, e) => s + e.xp, 0) },
         activeDaysInARow: activeStreak(data.xp, d),

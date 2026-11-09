@@ -105,11 +105,26 @@ export function activeStreak(entries: XpEntry[], today: string): number {
 }
 export const attrLevel = (xp: number) => levelFor(xp, ATTR_COST)
 
-export function attrTotals(entries: XpEntry[]): Record<Attr, number> {
-  const t = Object.fromEntries(ATTRS.map((a) => [a.key, 0])) as Record<Attr, number>
+/** Attribute XP needed to go from Lv.1 to `level`. */
+export function attrXpForLevel(level: number): number {
+  let xp = 0
+  for (let l = 1; l < level; l++) xp += ATTR_COST(l)
+  return xp
+}
+
+export const MAX_BASE_LEVEL = 50
+
+/**
+ * Attribute XP from what you did, plus the starting levels you set for
+ * yourself. Starting levels only lift the attributes; the character level
+ * counts earned XP alone.
+ */
+export function attrTotals(entries: XpEntry[], base: Partial<Record<Attr, number>> = {}): Record<Attr, number> {
+  const t = Object.fromEntries(ATTRS.map((a) => [a.key, attrXpForLevel(clampLevel(base[a.key]))])) as Record<Attr, number>
   for (const e of entries) t[e.attr] = (t[e.attr] ?? 0) + e.xp
   return t
 }
+export const clampLevel = (n: unknown) => Math.min(MAX_BASE_LEVEL, Math.max(1, Math.round(Number(n) || 1)))
 
 export const isScheduled = (h: Habit, date: string) => h.days.includes(weekday(date))
 

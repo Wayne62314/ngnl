@@ -30,6 +30,7 @@ import CommandPalette from '@/components/CommandPalette.vue'
 import Toasts from '@/components/Toasts.vue'
 import Floaters from '@/components/Floaters.vue'
 import LevelUp from '@/components/LevelUp.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const data = useData()
 const ui = useUi()
@@ -163,6 +164,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <Toasts />
     <Floaters />
     <LevelUp />
+    <ConfirmDialog />
   </div>
 </template>
 

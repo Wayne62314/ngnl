@@ -100,3 +100,6 @@ export interface SyncConfig {
 }
 export const readSyncConfig = () => tx<SyncConfig | undefined>('readonly', (s) => s.get('sync'))
 export const writeSyncConfig = (c: SyncConfig | null) => tx<void>('readwrite', (s) => (c ? s.put(c, 'sync') : s.delete('sync')))
+
+/** Forgets backup/reminder history (used when the save is deleted). */
+export const resetMeta = () => tx<void>('readwrite', (s) => void s.put({}, 'meta'))
