@@ -111,6 +111,27 @@ export interface Snapshot {
   checkins: Checkin[]
   moods: Mood[]
   profile: Profile
+  /** Change times used to merge copies from different devices (see merge.ts). */
+  clock?: SyncClock
+}
+
+/**
+ * When each piece of data last changed, so two devices that both edited
+ * offline can be merged record by record instead of one overwriting the other.
+ * Items carry their own `updatedAt`; everything else is tracked here.
+ */
+export interface SyncClock {
+  /** Set when the whole dataset is replaced (restore from backup); a newer epoch wins outright. */
+  epoch: string
+  /** Deleted item id → when it was deleted. */
+  tomb: Record<string, string>
+  /** "a|b" → last time this link was added or removed. */
+  links: Record<string, string>
+  /** "habitId|date" → last time this check-in was set or cleared. */
+  checkins: Record<string, string>
+  /** date → last time that day's mood was set or cleared. */
+  moods: Record<string, string>
+  profile: string
 }
 
 export const TYPE_META: Record<ItemType, { label: string; route: string }> = {

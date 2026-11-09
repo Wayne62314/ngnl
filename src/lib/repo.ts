@@ -1,8 +1,20 @@
-import type { Item, ItemType, Profile, Snapshot } from './types'
+import type { Item, ItemType, Profile, Snapshot, SyncClock } from './types'
+import { clockOf, emptyClock, linkKey } from './merge'
 
 export const ITEM_TYPES: readonly ItemType[] = ['task', 'habit', 'goal', 'person', 'event', 'note']
 
 const now = () => new Date().toISOString()
+/**
+ * A timestamp that is "now", but never earlier than `prev` + 1 ms. If this
+ * device's clock is behind the one that wrote `prev`, the new change still
+ * counts as newer when devices merge.
+ */
+export const after = (prev?: string) => {
+  const t = now()
+  if (!prev || t > prev) return t
+  const p = Date.parse(prev)
+  return Number.isNaN(p) ? t : new Date(p + 1).toISOString()
+}
 const uuid = () =>
   globalThis.crypto?.randomUUID?.() ?? 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
 
@@ -16,7 +28,7 @@ function stripMeta(data: Record<string, unknown>) {
   return rest
 }
 
-export const emptySnapshot = (): Snapshot => ({ version: 1, items: [], links: [], checkins: [], moods: [], profile: {} })
+export const emptySnapshot = (): Snapshot => ({ version: 1, items: [], links: [], checkins: [], moods: [], profile: {}, clock: emptyClock() })
 
 const isDate = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)
 
@@ -58,7 +70,8 @@ export function parseSnapshot(raw: unknown): Snapshot {
   }
   const moods = [...moodMap.values()].sort((a, b) => a.date.localeCompare(b.date))
   const profile = s.profile && typeof s.profile === 'object' ? s.profile : {}
-  return { version: 1, items, links, checkins, moods, profile }
+  const clock = s.clock && typeof s.clock === 'object' ? clockOf(s as Snapshot) : emptyClock()
+  return { version: 1, items, links, checkins, moods, profile, clock }
 }
 
 /**
@@ -71,6 +84,17 @@ export class Repo {
 
   constructor(s: Snapshot = emptySnapshot()) {
     this.s = s
+  }
+
+  /** Change times for sync; created on first use for data from before sync existed. */
+  private get clock(): SyncClock {
+    return (this.s.clock ??= emptyClock())
+  }
+
+  /** Replaces everything (restore from backup). A new epoch makes this win over other devices' copies. */
+  replaceAll(s: Snapshot) {
+    const t = now()
+    this.s = { ...s, clock: { ...emptyClock(), epoch: t, profile: Object.keys(s.profile ?? {}).length ? t : '' } }
   }
 
   getItem(id: string): Item | undefined {
@@ -90,13 +114,15 @@ export class Repo {
     const idx = this.s.items.findIndex((i) => i.id === id)
     if (idx < 0) throw new Error('条目不存在')
     const cur = this.s.items[idx]
-    const next: Record<string, unknown> = { ...cur, ...stripMeta(patch), updatedAt: now() }
+    const next: Record<string, unknown> = { ...cur, ...stripMeta(patch), updatedAt: after(cur.updatedAt) }
     for (const k of Object.keys(next)) if (next[k] === null) delete next[k]
     this.s.items[idx] = next as unknown as Item
     return next as unknown as Item
   }
 
   deleteItem(id: string) {
+    const it = this.getItem(id)
+    if (it) this.clock.tomb[id] = after(it.updatedAt)
     this.s.items = this.s.items.filter((i) => i.id !== id)
     this.s.links = this.s.links.filter(([a, b]) => a !== id && b !== id)
     this.s.checkins = this.s.checkins.filter((c) => c.habitId !== id)
@@ -106,12 +132,17 @@ export class Repo {
     if (a === b) throw new Error('不能关联自己')
     if (!this.getItem(a) || !this.getItem(b)) throw new Error('条目不存在')
     const [x, y] = pair(a, b)
-    if (!this.s.links.some(([p, q]) => p === x && q === y)) this.s.links.push([x, y])
+    if (!this.s.links.some(([p, q]) => p === x && q === y)) {
+      this.s.links.push([x, y])
+      this.clock.links[linkKey(x, y)] = after(this.clock.links[linkKey(x, y)])
+    }
   }
 
   unlink(a: string, b: string) {
     const [x, y] = pair(a, b)
+    const before = this.s.links.length
     this.s.links = this.s.links.filter(([p, q]) => !(p === x && q === y))
+    if (this.s.links.length !== before) this.clock.links[linkKey(x, y)] = after(this.clock.links[linkKey(x, y)])
   }
 
   setCheckin(habitId: string, date: string, done: boolean) {
@@ -119,15 +150,18 @@ export class Repo {
     if (done && !has) {
       if (!this.getItem(habitId)) throw new Error('条目不存在')
       this.s.checkins.push({ habitId, date })
-    } else if (!done) {
+      this.clock.checkins[`${habitId}|${date}`] = after(this.clock.checkins[`${habitId}|${date}`])
+    } else if (!done && has) {
       this.s.checkins = this.s.checkins.filter((c) => !(c.habitId === habitId && c.date === date))
+      this.clock.checkins[`${habitId}|${date}`] = after(this.clock.checkins[`${habitId}|${date}`])
     }
   }
 
   setMood(date: string, mood: number | null, note = '') {
+    if (mood !== null && (!Number.isInteger(mood) || mood < 1 || mood > 5)) throw new Error('心情需在 1–5 之间')
+    this.clock.moods[date] = after(this.clock.moods[date])
     this.s.moods = this.s.moods.filter((m) => m.date !== date)
     if (mood !== null) {
-      if (!Number.isInteger(mood) || mood < 1 || mood > 5) throw new Error('心情需在 1–5 之间')
       this.s.moods.push({ date, mood, note })
       this.s.moods.sort((a, b) => a.date.localeCompare(b.date))
     }
@@ -135,5 +169,6 @@ export class Repo {
 
   setProfile(p: Profile) {
     this.s.profile = { ...p }
+    this.clock.profile = after(this.clock.profile)
   }
 }

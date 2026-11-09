@@ -6,6 +6,7 @@ import { useUi } from '@/stores/ui'
 import { CONTACT_XP, HABIT_XP, MOOD_XP, TASK_XP } from '@/lib/game'
 import Seg from '@/components/Seg.vue'
 import AiAssistantSection from '@/components/AiAssistantSection.vue'
+import SyncSection from '@/components/SyncSection.vue'
 
 const data = useData()
 const ui = useUi()
@@ -110,6 +111,8 @@ const counts = () => {
         </div>
       </div>
     </section>
+
+    <SyncSection />
 
     <AiAssistantSection id="ai" />
 

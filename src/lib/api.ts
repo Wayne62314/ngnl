@@ -1,6 +1,7 @@
 import type { Item, ItemType, Profile, Snapshot } from './types'
 import { Repo, parseSnapshot } from './repo'
 import { announceChange, readSnapshot, writeSnapshot } from './storage'
+import { fingerprint, mergeSnapshots } from './merge'
 
 /**
  * Same shape as the old HTTP client, but everything happens in this browser.
@@ -24,13 +25,21 @@ async function ensure(): Promise<Repo> {
   return repo
 }
 
+/** Called after every change the user makes on this device (not after merges from sync). */
+const listeners = new Set<() => void>()
+export function onLocalChange(cb: () => void) {
+  listeners.add(cb)
+  return () => listeners.delete(cb)
+}
+
 /** Serialises mutations so two quick clicks can't save out of order. */
-function mutate<T>(fn: (r: Repo) => T): Promise<T> {
+function mutate<T>(fn: (r: Repo) => T, opts: { local?: boolean } = { local: true }): Promise<T> {
   const run = queue.then(async () => {
     const r = await ensure()
     const out = fn(r)
     await writeSnapshot(clone(r.s))
     announceChange()
+    if (opts.local) for (const cb of listeners) cb()
     return clone(out)
   })
   queue = run.catch(() => undefined)
@@ -55,7 +64,22 @@ export const api = {
   /** Replaces everything with a validated backup. */
   import: (raw: unknown) => {
     const s = parseSnapshot(plain(raw))
-    return mutate<Snapshot>((r) => ((r.s = s), r.s))
+    return mutate<Snapshot>((r) => (r.replaceAll(s), r.s))
+  },
+  /**
+   * Merges a copy from another device into this one and saves the result.
+   * `union` is for a device joining sync: its own data is kept, not replaced.
+   */
+  mergeRemote(remote: Snapshot, union = false): Promise<{ snapshot: Snapshot; changed: boolean }> {
+    const incoming = parseSnapshot(remote)
+    return mutate(
+      (r) => {
+        const before = fingerprint(r.s)
+        r.s = mergeSnapshots(r.s, incoming, { union })
+        return { snapshot: r.s, changed: fingerprint(r.s) !== before }
+      },
+      { local: false },
+    )
   },
   async export(): Promise<Snapshot> {
     await queue

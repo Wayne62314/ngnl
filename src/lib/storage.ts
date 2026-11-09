@@ -89,3 +89,14 @@ export const announceChange = () => channel?.postMessage('changed')
 export function onExternalChange(cb: () => void) {
   channel?.addEventListener('message', (e) => e.data === 'changed' && cb())
 }
+
+/** Sync settings for this device. The code stays on this device (and the ones you pair). */
+export interface SyncConfig {
+  code: string
+  server: string
+  /** Version of the remote copy this device last saw (for conflict detection). */
+  version: number
+  lastSyncAt?: string
+}
+export const readSyncConfig = () => tx<SyncConfig | undefined>('readonly', (s) => s.get('sync'))
+export const writeSyncConfig = (c: SyncConfig | null) => tx<void>('readwrite', (s) => (c ? s.put(c, 'sync') : s.delete('sync')))

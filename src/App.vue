@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
-import { BookOpenText, CalendarDays, History, Lightbulb, Network, Repeat, Search, Settings, Swords, UserRound, Users } from 'lucide-vue-next'
+import { BookOpenText, CalendarDays, History, Lightbulb, Network, Repeat, Search, Settings, Swords, UserRound, Users, Cloud, CloudOff, RefreshCw } from 'lucide-vue-next'
 import { useData } from '@/stores/data'
 import { useUi } from '@/stores/ui'
 import { useMcp } from '@/stores/mcp'
+import { useSync } from '@/stores/sync'
 import Avatar from '@/components/Avatar.vue'
 import XpBar from '@/components/XpBar.vue'
 import ItemDrawer from '@/components/ItemDrawer.vue'
@@ -15,6 +16,7 @@ import LevelUp from '@/components/LevelUp.vue'
 
 const data = useData()
 const ui = useUi()
+const sync = useSync()
 
 const nav = [
   { to: '/', label: '今日', icon: CalendarDays },
@@ -34,7 +36,10 @@ function onKey(e: KeyboardEvent) {
   }
 }
 onMounted(() => {
-  data.init().then(() => useMcp().start())
+  data.init().then(() => {
+    useMcp().start()
+    void useSync().init()
+  })
   window.addEventListener('keydown', onKey)
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
@@ -76,6 +81,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </nav>
 
       <div class="side-foot">
+        <RouterLink v-if="sync.enabled" to="/settings" class="sync-pill" :class="sync.state" :title="sync.error || '多设备同步'">
+          <component :is="sync.state === 'offline' || sync.state === 'error' ? CloudOff : sync.state === 'syncing' ? RefreshCw : Cloud" :size="14" />
+          {{ { idle: '已同步', syncing: '同步中…', offline: '离线 · 稍后同步', error: '同步出错', off: '' }[sync.state] }}
+        </RouterLink>
         <RouterLink to="/settings" class="nav-item">
           <Settings :size="18" />
           <span>设置与备份</span>
@@ -230,6 +239,32 @@ kbd {
 }
 .nav-item.router-link-exact-active svg {
   color: var(--gold);
+}
+.sync-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px 6px;
+  font-size: 12px;
+  color: var(--attr-body);
+  text-decoration: none;
+}
+.sync-pill.syncing {
+  color: var(--text-3);
+}
+.sync-pill.syncing svg {
+  animation: spin 1s linear infinite;
+}
+.sync-pill.offline {
+  color: var(--text-3);
+}
+.sync-pill.error {
+  color: var(--danger);
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .side-foot {
   margin-top: auto;

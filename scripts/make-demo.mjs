@@ -32,7 +32,12 @@ const add = (k, n) => {
 const START = add(TODAY, -(DAYS - 1))
 const dayIndex = (k) => Math.round((new Date(k) - new Date(START)) / 86400000)
 const wd = (k) => new Date(k + 'T00:00:00').getDay()
-const iso = (k, h = 9) => `${k}T${pad(h)}:${pad(int(0, 59))}:00.000Z`
+const NOW = new Date().toISOString()
+// Never in the future: a future updatedAt would beat real edits when devices merge.
+const iso = (k, h = 9) => {
+  const t = `${k}T${pad(h)}:${pad(int(0, 59))}:00.000Z`
+  return t > NOW ? NOW : t
+}
 let n = 0
 const id = (p) => `${p}-${(++n).toString(36)}`
 
